@@ -6,28 +6,19 @@
 //#define BLYNK_TEMPLATE_NAME "Deck Train"
 //#define BLYNK_AUTH_TOKEN "HGJM2L_Z9bSIUmTeMgHWPZP1KpRbEHt3"
 
-
-// Diplay parameters
-#define D_HEIGHT 64  //Display height
-#define D_WIDTH 128  //Display width
-
-// Determines how long text displayed prior to being cleared from the screen
-#define D_DELAY 1000
 #define DT 500
-
-// Station 1-4 LED display duration
-// Determines how long Station LED on the Blynk GUI stay on
-#define STATION_LED_DURATION 3000
 
 #include <SPI.h>
 #include <Wire.h>
 #include <WiFi.h>
 #include <WiFiClient.h>
 #include <BlynkSimpleEsp32.h>
-#include <Adafruit_SH1107_Ext.h>
 
 int train_speed = 0;
 int train_speed_hold = 0;
+int new_Control_data = 0;
+int Control_data = 0;
+int command = 0;
 
 
 // Function Declarations
@@ -53,18 +44,6 @@ int receiveCentralData();
 void parseIncomingCommands();
 
 
-//Display instance
-
-//Note this is our _Ext or extention of the Adafruit library to include the following functions:
-// 1. void display.centeredDisplay("line1", ...); with up to four lines as arguments with an optional
-// last numeric delay parameter which clears the display after delay
-// 2. void display.clear_Disp(); can be called with no argument (executes immediately)
-// or with a number of miliseconds to clear the display after
-// 3. void display.timerRun(); to make the timer in the new display library run
-
-Adafruit_SH1107_Ext display = Adafruit_SH1107_Ext(D_HEIGHT, D_WIDTH, &Wire, 1000000, 1000000);
-
-
 // Blynk variables
 
 BlynkTimer timer;  //Using blynk timer but could also use SimpleTimer
@@ -73,14 +52,10 @@ char auth[] = BLYNK_AUTH_TOKEN;
 char ssid[] = "BR Guest";
 char pass[] = "Pamma355!";
 
-//  char ssid[] = "Train";
-//  char pass[] = "Photon8589";
-
-
 // This function is called every time the device is connected to the Blynk.Cloud
 BLYNK_CONNECTED() {
-//  sendDataCentral(39);  //Train Ready Command
-//  display.centeredDisplay("Wifi", "Connected", D_DELAY);
+  sendDataCentral(39);  //Train Ready Command
+
 }
 
 
@@ -90,31 +65,19 @@ void setup() {
   Serial.begin(115200);
   Serial1.begin(115200);
 
-  pinMode (12, OUTPUT);
-  pinMode (27, INPUT);
-
-  //Display Settings
-  display.begin(0x3C, true);  // Address 0x3C default
-  display.setRotation(3);
-  display.setTextSize(2);
-  display.setTextColor(SH110X_WHITE);
-  display.setCursor(0, 0);
-  display.clearDisplay();
-  display.display();
+  pinMode (15, OUTPUT);
+  pinMode (32, INPUT);
 
   Blynk.begin(auth, ssid, pass);
-  // You can also specify server:
-  // Blynk.begin(auth, ssid, pass, "blynk.cloud", 80);
-  // Blynk.begin(auth, ssid, pass, IPAddress(192,168,1,100), 8080);
-
+ 
   // Setup a function to be called every second
   // timer.setInterval(1000L, myTimerEvent);
 
   Blynk.virtualWrite(V1, LOW);     // Lights OFF
   Blynk.virtualWrite(V2, LOW);     // Smoke OFF
-  Blynk.virtualWrite(V3, LOW);     // RFID sensor OFF
-  Blynk.virtualWrite(V4, LOW);     // Park OFF
-  Blynk.virtualWrite(V5, HIGH);    // Sound ON
+  Blynk.virtualWrite(V3, HIGH);    // Sound ON
+  Blynk.virtualWrite(V4, LOW);     // RFID OFF
+  Blynk.virtualWrite(V5, LOW);     // Park OFF
   Blynk.virtualWrite(V6, HIGH);    // Direction FWD 
   Blynk.virtualWrite(V10, LOW);    // Speed = 0 
   Blynk.virtualWrite(V25, LOW);    // Station 1 LED OFF
@@ -130,7 +93,6 @@ void loop() {
   Blynk.run();
   parseIncomingCommands();
   timer.run();
-  display.timerRun();
 }
 
 
@@ -161,20 +123,25 @@ void sendDataCentral(int data, unsigned long int delay) {
 }
 
 
-int receiveCentralData() {
-  if (Serial1.available()) {
-    return Serial1.read();
-  } else return -1;
-}
-
-
 // Code to receive station information from the central board sent to it by the RFID tag reader board
 // Needs to be called in loop
   
 void parseIncomingCommands() {
-  int command = receiveCentralData();
+
+  if (Serial1.available()) {
+    uint8_t controlChar = Serial1.read();  
+    Control_data = (int)controlChar;
+
+    new_Control_data = true;
+  }
 
 // Sends Station # to GUI
+  if (new_Control_data) {
+    
+    Serial.print("Control Data Received: ");
+    Serial.println(Control_data);
+
+  command = Control_data;
   if (command > -1) {
     if (command == 25) {
       virtualWrite(V25, 1);        // turns on Station 1 LED and others off
@@ -230,78 +197,68 @@ void parseIncomingCommands() {
       train_speed = (command - 100);  
       virtualWrite(V10, train_speed);
     } 
-
-  }
+  }  
+  new_Control_data = false;  
+}
 }
 
-
 // GUI activated Train function controls
-// Sent from ESP32 to Due
+// Sent from ESP32 Serial1 to Giga Serial4
+
 // ** Switch ON / OFF **
+// 3 digit number (1 = 'Switch ON/OFF function'; Virtual pin number; ON = 1, OFF = 0)
 
 BLYNK_WRITE(V1) {
   int pinValue = param.asInt();
   if (pinValue == 1) {
-    sendDataCentral(101);
-    display.centeredDisplay("Lights ON", D_DELAY);
+    sendDataCentral(111);     // Lights ON
   } else if (pinValue == 0) {
-    sendDataCentral(100);
-    display.centeredDisplay("Lights OFF", D_DELAY);
+    sendDataCentral(110);     // Lights OFF
   }
 }
 
 BLYNK_WRITE(V2) {
   int pinValue = param.asInt();
   if (pinValue == 1) {
-    sendDataCentral(151);
-    display.centeredDisplay("Smoke ON", D_DELAY);
+    sendDataCentral(121);   // Smoke ON
   } else if (pinValue == 0) {
-    sendDataCentral(150);
-    display.centeredDisplay("Smoke OFF", D_DELAY);
+    sendDataCentral(120);   // Smoke OFF
   }
 }
 
 BLYNK_WRITE(V3) {
   int pinValue = param.asInt();
   if (pinValue == 1) {
-    sendDataCentral(161);
-    display.centeredDisplay("Sound ON", D_DELAY);
+    sendDataCentral(131);   // Sound ON
   } else if (pinValue == 0) {
-    sendDataCentral(160);
-    display.centeredDisplay("Sound OFF", D_DELAY);
+    sendDataCentral(130);   // Sound OFF
   }
 }
 
 BLYNK_WRITE(V4) {
   int pinValue = param.asInt();
   if (pinValue == 1) {
-    sendDataCentral(251);
-    display.centeredDisplay("RFID ON", D_DELAY);
+    sendDataCentral(141);   // Read RFID ON
   } else if (pinValue == 0) {
-    sendDataCentral(250);
-    display.centeredDisplay(RFID"RFID OFF", D_DELAY);
+    sendDataCentral(140);   // Read RFID OFF
   }
 }
 
 BLYNK_WRITE(V5) {
   int pinValue = param.asInt();
   if (pinValue == 1) {
-    sendDataCentral(253);
-    display.centeredDisplay("Park ON", D_DELAY);
+    sendDataCentral(151);   // Park function ON
   } else if (pinValue == 0) {
-    sendDataCentral(252);
-    display.centeredDisplay("Park OFF", D_DELAY);
+    sendDataCentral(150);   // Park function OFF
   }
 }
 
 BLYNK_WRITE(V6) {
   int pinValue = param.asInt();
   if (pinValue == 1) {
-    sendDataCentral(255);
-    display.centeredDisplay("Forward", D_DELAY);
+    sendDataCentral(161);   // Direction = FORWARD
   } else if (pinValue == 0) {
-    sendDataCentral(254);
-    display.centeredDisplay("Reverse", D_DELAY);
+    sendDataCentral(160);   // Direction = REVERSE
   }
 }
 
@@ -312,61 +269,58 @@ BLYNK_WRITE(V6) {
 BLYNK_WRITE(V7) {
   int pinValue = param.asInt();
   if (pinValue == 1) {
-    sendDataCentral(7);
-    display.centeredDisplay("Start/", "Faster", D_DELAY);
+    sendDataCentral(7);   // Start / Faster
   }
 }
 
 BLYNK_WRITE(V8) {
   int pinValue = param.asInt();
   if (pinValue == 1) {
-    sendDataCentral(8);
-    display.centeredDisplay("Slower", D_DELAY);
+    sendDataCentral(8);   // Slower
   }
 }
 
 BLYNK_WRITE(V9) {
   int pinValue = param.asInt();
   if (pinValue == 1) {
-    sendDataCentral(9);
-    display.centeredDisplay("Stop", D_DELAY);
+    sendDataCentral(9);   // Stop
   }
 }
 
 
-// GUI activated instantaneous sounds (push button)
-// American Mogul (V41 - V64)
+// GUI activated instantaneous sounds
+// ** Press ON / Release OFF **
 
-BLYNK_WRITE(V41) {                // AM F1
+// American Mogul (V40 - V64)
+
+// V40 = F0 function for lights - already controlled by V1
+
+BLYNK_WRITE(V41) {                // AM F1 - Bell
   int pinValue = param.asInt();
   if (pinValue == 1) {
     sendDataCentral(41);
-    display.centeredDisplay("Bell", D_DELAY);
   }
   else if (pinValue == 0) {}
 }
 
-BLYNK_WRITE(V42) {
+BLYNK_WRITE(V42) {                // AM F2 - Long whistles
   int pinValue = param.asInt();
   if (pinValue == 1) {
     sendDataCentral(42);
-    display.centeredDisplay("Long", "whistles", D_DELAY);
   }
 }
 
-BLYNK_WRITE(V43) {
+BLYNK_WRITE(V43) {                // AM F3 - Whistle
   int pinValue = param.asInt();
   if (pinValue == 1) {
     sendDataCentral(43);
-    display.centeredDisplay("Whistle", D_DELAY);
   }
 }
 
-BLYNK_WRITE(V44) {                // AM F4
+BLYNK_WRITE(V44) {                // AM F4 - Short whistle
   int pinValue = param.asInt();
   if (pinValue == 1) {
     sendDataCentral(44);
-    display.centeredDisplay("Short", "Whistle", D_DELAY);
   }
   else if (pinValue == 0) {}
 }
@@ -399,51 +353,45 @@ BLYNK_WRITE(V48) {                // AM F9 is Mute ON/OFF activated by V5 functi
   }
 }
 
-BLYNK_WRITE(V49) {                // AM F9
+BLYNK_WRITE(V49) {                // AM F9 - Wheels squealing
   int pinValue = param.asInt();
   if (pinValue == 1) {
     sendDataCentral(49);
-    display.centeredDisplay("Wheels", "squealing", D_DELAY);
   }
 }
 
-BLYNK_WRITE(V50) {                // AM F10
+BLYNK_WRITE(V50) {                // AM F10 - Coal shoveling
   int pinValue = param.asInt();
   if (pinValue == 1) {
     sendDataCentral(50);
-    display.centeredDisplay("Coal", "shoveling", D_DELAY);
   }
 }
 
-BLYNK_WRITE(V51) {                // AM F11
+BLYNK_WRITE(V51) {                // AM F11 - Blower sound
   int pinValue = param.asInt();
   if (pinValue == 1) {
     sendDataCentral(51);
-    display.centeredDisplay("Blower", "sound", D_DELAY);
   }
 }
 
-BLYNK_WRITE(V52) {                // AM F12
+BLYNK_WRITE(V52) {                // AM F12 - Coupler / uncoupler
   int pinValue = param.asInt();
   if (pinValue == 1) {
     sendDataCentral(52);
-    display.centeredDisplay("Coupler", "uncoupler", D_DELAY);
   }
 }
 
-BLYNK_WRITE(V53) {                // AM F13
+BLYNK_WRITE(V53) {                // AM F13 - Coal dropping
   int pinValue = param.asInt();
   if (pinValue == 1) {
     sendDataCentral(53);
-    display.centeredDisplay("Coal", "dropping", D_DELAY);
   }
 }
 
-BLYNK_WRITE(V54) {                // AM F14
+BLYNK_WRITE(V54) {                // AM F14 - Steam venting
   int pinValue = param.asInt();
   if (pinValue == 1) {
     sendDataCentral(54);
-    display.centeredDisplay("Steam", "venting", D_DELAY);
   }
 }
 
@@ -461,43 +409,39 @@ BLYNK_WRITE(V56) {                // AM Open F16
   }
 }
 
-BLYNK_WRITE(V57) {                // AM F17
+BLYNK_WRITE(V57) {                // AM F17 - Conductor calling 'All Aboard'
   int pinValue = param.asInt();
   if (pinValue == 1) {
     sendDataCentral(57);
-    display.centeredDisplay("Conductor", "calling", D_DELAY);
+
   }
 }
 
-BLYNK_WRITE(V58) {                // AM F18
+BLYNK_WRITE(V58) {                // AM F18 - Generator sound
   int pinValue = param.asInt();
   if (pinValue == 1) {
     sendDataCentral(58);
-    display.centeredDisplay("Generator", "sound", D_DELAY);
   }
 }
 
-BLYNK_WRITE(V59) {                // AM F19
+BLYNK_WRITE(V59) {                // AM F19 - Air pump
   int pinValue = param.asInt();
   if (pinValue == 1) {
     sendDataCentral(59);
-    display.centeredDisplay("Air", "pump", D_DELAY);
   }
 }
 
-BLYNK_WRITE(V60) {                // AM F20
+BLYNK_WRITE(V60) {                // AM F20 - Coal unloading
   int pinValue = param.asInt();
   if (pinValue == 1) {
     sendDataCentral(60);
-    display.centeredDisplay("Coal", "unloading", D_DELAY);
   }
 }
 
-BLYNK_WRITE(V61) {                // AM F21
+BLYNK_WRITE(V61) {                // AM F21 - Water filling
   int pinValue = param.asInt();
   if (pinValue == 1) {
     sendDataCentral(61);
-    display.centeredDisplay("Water", "filling", D_DELAY);
   }
 }
 
@@ -525,16 +469,7 @@ BLYNK_WRITE(V64) {                // AM Open F24
 
 // K3 Stainz sounds/function (V65 - V79)
 
-BLYNK_WRITE(V65) {                // K3 F0
-  int pinValue = param.asInt();
-  if (pinValue == 1) {
-    display.centeredDisplay("Lights ON",D_DELAY);
-    sendDataCentral(101); 
-  } else if (pinValue == 0) {
-    display.centeredDisplay("Lights OFF", D_DELAY);
-    sendDataCentral(100);
-  }
-}
+// V65 = F0 function for lights - already controlled by V1
 
 BLYNK_WRITE(V66) {                // K3 Open F1
   int pinValue = param.asInt();
@@ -543,19 +478,17 @@ BLYNK_WRITE(V66) {                // K3 Open F1
   }
 }
 
-BLYNK_WRITE(V67) {                // K3 F2
+BLYNK_WRITE(V67) {                // K3 F2 - Conductor calling 'All Aboard'
   int pinValue = param.asInt();
   if (pinValue == 1) {
     sendDataCentral(67);
-    display.centeredDisplay("Conductor", "calling", D_DELAY);
   }
 }
 
-BLYNK_WRITE(V68) {                // K3 F3
+BLYNK_WRITE(V68) {                // K3 F3 - Conductor's whistle
   int pinValue = param.asInt();
   if (pinValue == 1) {
     sendDataCentral(68);
-    display.centeredDisplay("Conductors", "whistle", D_DELAY);
   }
 }
 
@@ -566,78 +499,68 @@ BLYNK_WRITE(V69) {                // K3 Open F4
   }
 }
 
-BLYNK_WRITE(V70) {                // K3 F5
+BLYNK_WRITE(V70) {                // K3 F5 - Coal shoveling
   int pinValue = param.asInt();
   if (pinValue == 1) {
     sendDataCentral(70);
-    display.centeredDisplay("Coal", "shoveling", D_DELAY);
   }
 }
 
-BLYNK_WRITE(V71) {                // K3 F6
+BLYNK_WRITE(V71) {                // K3 F6 - Injector sound
   int pinValue = param.asInt();
   if (pinValue == 1) {
     sendDataCentral(71);
-    display.centeredDisplay("Injector", "sound", D_DELAY);
   }
 }
 
-BLYNK_WRITE(V72) {                // K3 F7
+BLYNK_WRITE(V72) {                // K3 F7 - Bell
   int pinValue = param.asInt();
   if (pinValue == 1) {
     sendDataCentral(72);
-    display.centeredDisplay("Bell", D_DELAY);
   }
 }
 
-BLYNK_WRITE(V73) {                // K3 F8
+BLYNK_WRITE(V73) {                // K3 F8 - Sound ON / OFF Toggle
   int pinValue = param.asInt();
   if (pinValue == 1) {
     sendDataCentral(161);
-    display.centeredDisplay("Sound ON", D_DELAY);
   } else if (pinValue == 0) {
     sendDataCentral(160);
-    display.centeredDisplay("Sound OFF", D_DELAY);
   }
 }
 
-BLYNK_WRITE(V74) {                // K3 F9
+BLYNK_WRITE(V74) {                // K3 F9 - Whistle
   int pinValue = param.asInt();
   if (pinValue == 1) {
     sendDataCentral(74);
-    display.centeredDisplay("Whistle", D_DELAY);
   }
 }
 
-BLYNK_WRITE(V75) {                // K3 F10
+BLYNK_WRITE(V75) {                // K3 F10 - Coupler / uncoupler
   int pinValue = param.asInt();
   if (pinValue == 1) {
     sendDataCentral(75);
-    display.centeredDisplay("Coupler", "uncoupler", D_DELAY);
   }
 }
 
-BLYNK_WRITE(V76) {                // K3 F11
+BLYNK_WRITE(V76) {                // K3 F11 - Air pump
   int pinValue = param.asInt();
   if (pinValue == 1) {
     sendDataCentral(76);
-    display.centeredDisplay("Air", "pump", D_DELAY);
   }
 }
 
-BLYNK_WRITE(V77) {                // K3 F12
+BLYNK_WRITE(V77) {                // K3 F12 - Boiler sound
   int pinValue = param.asInt();
   if (pinValue == 1) {
     sendDataCentral(77);
-    display.centeredDisplay("Boiler", "sound", D_DELAY);
   }
 }
 
-BLYNK_WRITE(V78) {                // K3 F13
+BLYNK_WRITE(V78) {                // K3 F13 - Steam venting
   int pinValue = param.asInt();
   if (pinValue == 1) {
     sendDataCentral(78);
-    display.centeredDisplay("Steam", "venting", D_DELAY);
   }
 }
 
