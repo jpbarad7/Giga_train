@@ -70,6 +70,7 @@ String lastRFIDData = "";
 String GUI_text = "";
 String RFID_text = "";
 String Motion_text = "";
+String Speed_text = "";
 
 // Initialize objects
 GigaDisplay_GFX tft;
@@ -84,6 +85,7 @@ void sendDataGui(int data, unsigned long int delay = 0);
 void updateGuiDisplay(String text);
 void updateRfidDisplay(String text);
 void updateMotionDisplay(String text);
+void updateSpeedDisplay(String text);
 
 //============================================================
 // Setup
@@ -265,11 +267,25 @@ void processGuiData() {
         char speedCmd[30];
         int speedValue = (train_speed == 0) ? -1 : train_speed * 10;
 
-        Motion_text = "Train Moving "
+        if (train_speed == 0) {
+            Motion_text = "Train PARKED";
+            Speed_text = "";
+        }
+        else {
+            if (train_direction == 1) { 
+                Motion_text = "Train Moving FORWARD";
+            }
+            else { 
+                Motion_text = "Train Moving REVERSE";
+            }
+            Speed_text = "Speed = " + String(train_speed * 10) + "%";
+        }     
+
         sprintf(speedCmd, "<t 03 %d %d>", speedValue, train_direction);
         sendDataDccEX(speedCmd);
         sendDataGui(train_speed);
-        updateMotionDisplay();
+        updateMotionDisplay(Motion_text);
+        updateSpeedDisplay(Speed_text);
         SerialUSB.println(train_speed);
 
         last_sent_speed = train_speed;
@@ -278,9 +294,13 @@ void processGuiData() {
 
     // Train stop
     if (GUI_data == 9) {
-        sendDataDccEX("<t 03 0 0>");
         train_speed = 0;
         GUI_text = "Train STOP";
+        Motion_text = "Train STOPPED";
+        Speed_text = "";
+        sendDataDccEX("<t 03 0 0>");
+        updateMotionDisplay(Motion_text);
+        updateSpeedDisplay(Speed_text);
     }  
 
     // Process sound effects
@@ -614,12 +634,28 @@ void updateMotionDisplay(String text) {
     tft.setCursor(commandX, 450);
     tft.setTextColor(GC9A01A_BLUE);
     tft.print(text);
-    tft.println(train_speed);
+}
+
+void updateSpeedDisplay(String text) {
+    int width = tft.width();
+    int textSizeBody = 3;
+
+    tft.setTextWrap(false);
+    tft.fillRect(0, 480, width, 32, GC9A01A_BLACK);
+
+    int commandX = (width - (text.length() * 6 * textSizeBody)) / 2;
+    tft.setTextSize(textSizeBody);
+    tft.setCursor(commandX, 480);
+    tft.setTextColor(GC9A01A_BLUE);
+    tft.print(text);
+}
+
+
 
  //   timer.setTimeout(1000, [width]() {
  //       tft.fillRect(0, 320, width, 64, GC9A01A_BLACK);
-    });
-}
+ //   });
+//}
 
 //============================================================
 // Communication Functions
