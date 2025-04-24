@@ -69,7 +69,7 @@ String lastGUIData = "";
 String lastRFIDData = "";
 String GUI_text = "";
 String RFID_text = "";
-String Motion_text = "";
+String Motion_text = "Train Parked";
 String Speed_text = "";
 
 // Initialize objects
@@ -126,6 +126,9 @@ void setup() {
     Serial3.println("<F 3 2 1>");
     delay(2000);
     Serial3.println("<F 3 2 0>");
+
+    updateMotionDisplay(Motion_text);
+    updateSwitchDisplay();
      
 }
 
@@ -177,7 +180,7 @@ void parseIncomingData() {
         SerialUSB.println(RFID_data);
     }
 
-    if (new_RFID_data) {
+    if ((new_RFID_data) && (RFID_sensor == 1)) {
         processRfidData();
         
         // Update display status data
@@ -197,18 +200,22 @@ void processGuiData() {
     // Process light controls
     if (GUI_data == 111) {
         GUI_text = "Lights ON";
+        light_switch = 1;
         sendDataDccEX("<F 3 0 1>");
     } else if (GUI_data == 110) {
         GUI_text = "Lights OFF";
+        light_switch = 0;
         sendDataDccEX("<F 3 0 0>");
     }
 
     // Process smoke controls
     if (GUI_data == 121) {
         GUI_text = "Smoke ON";
+        smoke_switch = 1;
         sendDataDccEX("<F 3 4 1>");
     } else if (GUI_data == 120) {
         GUI_text = "Smoke OFF";
+        smoke_switch = 0;
         sendDataDccEX("<F 3 4 0>");
     } 
 
@@ -286,8 +293,7 @@ void processGuiData() {
         sendDataGui(train_speed);
         updateMotionDisplay(Motion_text);
         updateSpeedDisplay(Speed_text);
-        SerialUSB.println(train_speed);
-
+    
         last_sent_speed = train_speed;
         last_sent_direction = train_direction;
     }
@@ -311,6 +317,8 @@ void processGuiData() {
         sendDataGui(((train_speed * 10) + 100), 0);
         train_speed_hold = train_speed;
     }
+
+    updateSwitchDisplay();
 }
 
 //============================================================
@@ -455,114 +463,116 @@ void processSoundEffects() {
 // RFID Data Processing
 //============================================================
 void processRfidData() {
-    // Process sound effects
-    if (Train_selection == 0) {         // American Mogul
-        if (RFID_data == 42) {
-            RFID_text = "Long Whistles";
-            sendDataDccEX("<F 3 2 1>");
-            sendDataDccEX("<F 3 2 0>", SOUND_DELAY);
-        }
-        else if (RFID_data == 43) {
-            RFID_text = "Whistle";
-            sendDataDccEX("<F 3 3 1>");
-            sendDataDccEX("<F 3 3 0>", SOUND_DELAY);
-        }
-        else if (RFID_data == 44) {
-            RFID_text = "Short Whistle";
-            sendDataDccEX("<F 3 4 1>");
-            sendDataDccEX("<F 3 4 0>", SOUND_DELAY);
-        }
-        else if (RFID_data == 41) {
-            RFID_text = "Bell";
-            sendDataDccEX("<F 3 1 1>");
-            sendDataDccEX("<F 3 1 0>", SOUND_DELAY);
-        }
-    }
+    if (RFID_sensor == 1) {
 
-    if (Train_selection == 1) {            // K3
-        if (RFID_data == 43) {
-            RFID_text = "Whistle";
-            sendDataDccEX("<F 3 9 1>");
-            sendDataDccEX("<F 3 9 0>", SOUND_DELAY);
+        // Process sound effects
+        if (Train_selection == 0) {         // American Mogul
+            if (RFID_data == 42) {
+                RFID_text = "Long Whistles";
+                sendDataDccEX("<F 3 2 1>");
+                sendDataDccEX("<F 3 2 0>", SOUND_DELAY);
+            }
+            else if (RFID_data == 43) {
+                RFID_text = "Whistle";
+                sendDataDccEX("<F 3 3 1>");
+                sendDataDccEX("<F 3 3 0>", SOUND_DELAY);
+            }
+            else if (RFID_data == 44) {
+                RFID_text = "Short Whistle";
+                sendDataDccEX("<F 3 4 1>");
+                sendDataDccEX("<F 3 4 0>", SOUND_DELAY);
+            }
+            else if (RFID_data == 41) {
+                RFID_text = "Bell";
+                sendDataDccEX("<F 3 1 1>");
+                sendDataDccEX("<F 3 1 0>", SOUND_DELAY);
+            }
         }
-        else if (RFID_data == 41) {
-            RFID_text = "Bell";
-            sendDataDccEX("<F 3 7 1>");
-            sendDataDccEX("<F 3 7 0>", SOUND_DELAY);
+
+        if (Train_selection == 1) {            // K3
+            if (RFID_data == 43) {
+                RFID_text = "Whistle";
+                sendDataDccEX("<F 3 9 1>");
+                sendDataDccEX("<F 3 9 0>", SOUND_DELAY);
+            }
+            else if (RFID_data == 41) {
+                RFID_text = "Bell";
+                sendDataDccEX("<F 3 7 1>");
+                sendDataDccEX("<F 3 7 0>", SOUND_DELAY);
+            }
         }
-    }
 
 
-
-    // Process station data
-    else if (RFID_data == 25) {
-        RFID_text = "Station 1";
-        sendDataGui(25);
-    }
-    else if (RFID_data == 26) {
-        RFID_text = "Station 2";
-        sendDataGui(26);
-    }
-    else if (RFID_data == 27) {
-        RFID_text = "Station 3";
-        sendDataGui(27);
-    }
-    else if (RFID_data == 28) {
-        RFID_text = "Station 4";
-        sendDataGui(28);
-    }
-    else if (RFID_data == 29) {
-        RFID_text = "Station 5";
-        sendDataGui(29);
-    }
-    else if (RFID_data == 30) {
-        RFID_text = "Station 6";
-        sendDataGui(30);
-    }
-
-    // Process speed settings
-    else if (RFID_data == 20) {
-        RFID_text = "Speed 20%";
-        train_speed = 2; 
-        sendDataDccEX("<t 1 03 20 1>");
-    }
-    else if (RFID_data == 21) {
-        RFID_text = "Speed 40%";
-        train_speed = 4; 
-        sendDataDccEX("<t 1 03 40 1>");
-    }
-    else if (RFID_data == 22) {
-        RFID_text = "Speed 60%";
-        train_speed = 6; 
-        sendDataDccEX("<t 1 03 60 1>");
-    }
-    else if (RFID_data == 23) {
-        RFID_text = "Speed 80%";
-        train_speed = 8; 
-        sendDataDccEX("<t 1 03 80 1>");
-    }
-    else if (RFID_data == 24) {
-        RFID_text = "Speed 100%";
-        train_speed = 10; 
-        sendDataDccEX("<t 1 03 100 1>");
-    }
-    
-    // Process park logic
-    if (park_switch == 1 && train_direction == 1) {
-        if (RFID_data == 31) { 
-            RFID_text = "Speed 50%";
-            train_speed = 5; 
-            sendDataDccEX("<t 1 03 50 1>");
+        // Process station data
+        if (RFID_data == 25) {
+            RFID_text = "Station 1";
+            sendDataGui(25);
         }
-        else if (RFID_data == 32) { 
-            RFID_text = "Speed 30%";
-            train_speed = 3; 
-            sendDataDccEX("<t 1 03 30 1>");
+        else if (RFID_data == 26) {
+            RFID_text = "Station 2";
+            sendDataGui(26);
         }
-        else if (RFID_data == 25) { 
-            RFID_text = "Parked";
-            train_speed = 0; 
-            sendDataDccEX("<t 1 03 -1 1>");
+        else if (RFID_data == 27) {
+            RFID_text = "Station 3";
+            sendDataGui(27);
+        }
+        else if (RFID_data == 28) {
+            RFID_text = "Station 4";
+            sendDataGui(28);
+        }
+        else if (RFID_data == 29) {
+            RFID_text = "Station 5";
+            sendDataGui(29);
+        }
+        else if (RFID_data == 30) {
+            RFID_text = "Station 6";
+            sendDataGui(30);
+        }
+
+        // Process speed settings
+        else if (RFID_data == 20) {
+            RFID_text = "Speed 20%";
+            train_speed = 2; 
+            sendDataDccEX("<t 1 03 20 1>");
+        }
+        else if (RFID_data == 21) {
+            RFID_text = "Speed 40%";
+            train_speed = 4; 
+            sendDataDccEX("<t 1 03 40 1>");
+        }
+        else if (RFID_data == 22) {
+            RFID_text = "Speed 60%";
+            train_speed = 6; 
+            sendDataDccEX("<t 1 03 60 1>");
+        }
+        else if (RFID_data == 23) {
+            RFID_text = "Speed 80%";
+            train_speed = 8; 
+            sendDataDccEX("<t 1 03 80 1>");
+        }
+        else if (RFID_data == 24) {
+            RFID_text = "Speed 100%";
+            train_speed = 10; 
+            sendDataDccEX("<t 1 03 100 1>");
+        }
+        
+        // Process park logic
+        if (park_switch == 1 && train_direction == 1) {
+            if (RFID_data == 31) { 
+                RFID_text = "Speed 50%";
+                train_speed = 5; 
+                sendDataDccEX("<t 1 03 50 1>");
+            }
+            else if (RFID_data == 32) { 
+                RFID_text = "Speed 30%";
+                train_speed = 3; 
+                sendDataDccEX("<t 1 03 30 1>");
+            }
+            else if (RFID_data == 25) { 
+                RFID_text = "Parked";
+                train_speed = 0; 
+                sendDataDccEX("<t 1 03 -1 1>");
+            }
         }
     }
 }
@@ -650,12 +660,62 @@ void updateSpeedDisplay(String text) {
     tft.print(text);
 }
 
+void updateSwitchDisplay() {
+    int width = tft.width();
+    int textSizeBody = 3;
 
+    tft.setTextWrap(false);
+//    tft.fillRect(0, 570, width, 32, GC9A01A_BLACK);
+//    tft.fillRect(0, 630, width, 32, GC9A01A_BLACK);
 
- //   timer.setTimeout(1000, [width]() {
- //       tft.fillRect(0, 320, width, 64, GC9A01A_BLACK);
- //   });
-//}
+    tft.setTextSize(textSizeBody);
+    tft.setTextColor(GC9A01A_WHITE);
+
+    if (light_switch == 1) {
+        tft.fillRect(0, 600, 289, 32, GC9A01A_BLACK);
+        tft.setCursor(50, 600);
+        tft.print("Lights ON");
+        }
+      else {
+        tft.fillRect(0, 600, 289, 32, GC9A01A_BLACK);
+        tft.setCursor(50, 600);
+        tft.print("Lights OFF");
+        }
+
+    if (smoke_switch == 1) {
+        tft.fillRect(290, 600, 399, 32, GC9A01A_BLACK);
+        tft.setCursor(290, 600);
+        tft.print("Smoke ON ");
+        }
+      else {
+        tft.fillRect(290, 600, 399, 32, GC9A01A_BLACK);
+        tft.setCursor(290, 600);
+        tft.print("Smoke OFF");
+        } 
+
+    if (RFID_sensor == 1) {
+        tft.fillRect(0, 660, 289, 32, GC9A01A_BLACK);
+        tft.setCursor(50, 660);
+        tft.print("RFID ON ");
+        }
+      else {
+        tft.fillRect(0, 660, 289, 32, GC9A01A_BLACK);
+        tft.setCursor(50, 660);
+        tft.print("RFID OFF");
+        }
+
+    if (park_switch == 1) {
+        tft.fillRect(290, 660, 399, 32, GC9A01A_BLACK);
+        tft.setCursor(290, 660);
+        tft.print("Park ON ");
+        }
+      else {
+        tft.fillRect(290, 660, 399, 32, GC9A01A_BLACK);
+        tft.setCursor(290, 660);
+        tft.print("Park OFF");
+        }   
+}
+
 
 //============================================================
 // Communication Functions
