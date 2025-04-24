@@ -3,6 +3,8 @@
 // Uses Arduino Giga to interface with DCC-EX, RFID and GUI
 //============================================================
 
+int Train_selection = 1;     // K3 Stanz (K3) = 1, American Mogul (AM) = 0
+
 // Include libraries
 #include "Arduino_GigaDisplay_GFX.h"
 #include <SimpleTimer.h>
@@ -67,6 +69,7 @@ String lastGUIData = "";
 String lastRFIDData = "";
 String GUI_text = "";
 String RFID_text = "";
+String Motion_text = "";
 
 // Initialize objects
 GigaDisplay_GFX tft;
@@ -80,6 +83,7 @@ void sendDataDccEX(char data[], unsigned long int delay = 0);
 void sendDataGui(int data, unsigned long int delay = 0);
 void updateGuiDisplay(String text);
 void updateRfidDisplay(String text);
+void updateMotionDisplay(String text);
 
 //============================================================
 // Setup
@@ -120,6 +124,7 @@ void setup() {
     Serial3.println("<F 3 2 1>");
     delay(2000);
     Serial3.println("<F 3 2 0>");
+     
 }
 
 //============================================================
@@ -260,9 +265,11 @@ void processGuiData() {
         char speedCmd[30];
         int speedValue = (train_speed == 0) ? -1 : train_speed * 10;
 
+        Motion_text = "Train Moving "
         sprintf(speedCmd, "<t 03 %d %d>", speedValue, train_direction);
         sendDataDccEX(speedCmd);
         sendDataGui(train_speed);
+        updateMotionDisplay();
         SerialUSB.println(train_speed);
 
         last_sent_speed = train_speed;
@@ -291,137 +298,137 @@ void processGuiData() {
 //============================================================
 void processSoundEffects() {
     // AM Sound Effects (41-64)
-    if (GUI_data == 41) {
-        sendDataDccEX("<F 3 7 1>");
-        sendDataDccEX("<F 3 7 0>", SOUND_DELAY);
-        GUI_text = "Bell";
-    }
-    else if (GUI_data == 42) {
-        sendDataDccEX("<F 3 2 1>");
-        sendDataDccEX("<F 3 2 0>", SOUND_DELAY);
-        GUI_text = "Long whistles";
-    }
-    else if (GUI_data == 43) {
-        sendDataDccEX("<F 3 9 1>");
-        sendDataDccEX("<F 3 9 0>", SOUND_DELAY);
-        GUI_text = "Whistle";
-    }
-    else if (GUI_data == 44) {
-        sendDataDccEX("<F 3 4 1>");
-        sendDataDccEX("<F 3 4 0>", SOUND_DELAY);
-        GUI_text = "Short whistle";
-    }
-    else if (GUI_data == 49) {
-        sendDataDccEX("<F 3 9 1>");
-        sendDataDccEX("<F 3 9 0>", SOUND_DELAY);
-        GUI_text = "Wheels squealing";
-    }
-    else if (GUI_data == 50) {
-        sendDataDccEX("<F 3 10 1>");
-        sendDataDccEX("<F 3 10 2>", SOUND_DELAY);
-        GUI_text = "Shoveling coal";
-    }
-    else if (GUI_data == 51) {
-        sendDataDccEX("<F 3 11 1>");
-        sendDataDccEX("<F 3 11 0>", SOUND_DELAY);
-        GUI_text = "Blower sound";
-    }
-    else if (GUI_data == 52) {
-        sendDataDccEX("<F 3 12 1>");
-        sendDataDccEX("<F 3 12 0>", SOUND_DELAY);
-        GUI_text = "Coupler/Uncoupler";
-    }
-    else if (GUI_data == 53) {
-        sendDataDccEX("<F 3 13 1>");
-        sendDataDccEX("<F 3 13 0>", SOUND_DELAY);
-        GUI_text = "Coal dropping";
-    }
-    else if (GUI_data == 54) {
-        sendDataDccEX("<F 3 13 1>");
-        sendDataDccEX("<F 3 13 0>", SOUND_DELAY);
-        GUI_text = "Steam venting";
-    }
-    else if (GUI_data == 57) {
-        sendDataDccEX("<F 3 17 1>");
-        sendDataDccEX("<F 3 17 0>", SOUND_DELAY);
-        GUI_text = "Conductor calling";
-    }
-    else if (GUI_data == 58) {
-        sendDataDccEX("<F 3 18 1>");
-        sendDataDccEX("<F 3 18 2>", SOUND_DELAY);
-        GUI_text = "Generator sound";
-    }
-    else if (GUI_data == 59) {
-        sendDataDccEX("<F 3 19 1>");
-        sendDataDccEX("<F 3 19 0>", SOUND_DELAY);
-        GUI_text = "Air pump";
-    }
-    else if (GUI_data == 60) {
-        sendDataDccEX("<F 3 20 1>");
-        sendDataDccEX("<F 3 20 0>", SOUND_DELAY);
-        GUI_text = "Coal unloading";
-    }
-    else if (GUI_data == 61) {
-        sendDataDccEX("<F 3 21 1>");
-        sendDataDccEX("<F 3 21 0>", SOUND_DELAY);
-        GUI_text = "Water filling tank";
+    if (Train_selection == 0) {
+        if (GUI_data == 41) {
+            sendDataDccEX("<F 3 7 1>");
+            sendDataDccEX("<F 3 7 0>", SOUND_DELAY);
+            GUI_text = "Bell";
+        }
+        else if (GUI_data == 42) {
+            sendDataDccEX("<F 3 2 1>");
+            sendDataDccEX("<F 3 2 0>", SOUND_DELAY);
+            GUI_text = "Long whistles";
+        }
+        else if (GUI_data == 43) {
+            sendDataDccEX("<F 3 9 1>");
+            sendDataDccEX("<F 3 9 0>", SOUND_DELAY);
+            GUI_text = "Whistle";
+        }
+        else if (GUI_data == 44) {
+            sendDataDccEX("<F 3 4 1>");
+            sendDataDccEX("<F 3 4 0>", SOUND_DELAY);
+            GUI_text = "Short whistle";
+        }
+        else if (GUI_data == 49) {
+            sendDataDccEX("<F 3 9 1>");
+            sendDataDccEX("<F 3 9 0>", SOUND_DELAY);
+            GUI_text = "Wheels squealing";
+        }
+        else if (GUI_data == 50) {
+            sendDataDccEX("<F 3 10 1>");
+            sendDataDccEX("<F 3 10 2>", SOUND_DELAY);
+            GUI_text = "Shoveling coal";
+        }
+        else if (GUI_data == 51) {
+            sendDataDccEX("<F 3 11 1>");
+            sendDataDccEX("<F 3 11 0>", SOUND_DELAY);
+            GUI_text = "Blower sound";
+        }
+        else if (GUI_data == 52) {
+            sendDataDccEX("<F 3 12 1>");
+            sendDataDccEX("<F 3 12 0>", SOUND_DELAY);
+            GUI_text = "Coupler/Uncoupler";
+        }
+        else if (GUI_data == 53) {
+            sendDataDccEX("<F 3 13 1>");
+            sendDataDccEX("<F 3 13 0>", SOUND_DELAY);
+            GUI_text = "Coal dropping";
+        }
+        else if (GUI_data == 54) {
+            sendDataDccEX("<F 3 13 1>");
+            sendDataDccEX("<F 3 13 0>", SOUND_DELAY);
+            GUI_text = "Steam venting";
+        }
+        else if (GUI_data == 57) {
+            sendDataDccEX("<F 3 17 1>");
+            sendDataDccEX("<F 3 17 0>", SOUND_DELAY);
+            GUI_text = "Conductor calling";
+        }
+        else if (GUI_data == 58) {
+            sendDataDccEX("<F 3 18 1>");
+            sendDataDccEX("<F 3 18 2>", SOUND_DELAY);
+            GUI_text = "Generator sound";
+        }
+        else if (GUI_data == 59) {
+            sendDataDccEX("<F 3 19 1>");
+            sendDataDccEX("<F 3 19 0>", SOUND_DELAY);
+            GUI_text = "Air pump";
+        }
+        else if (GUI_data == 60) {
+            sendDataDccEX("<F 3 20 1>");
+            sendDataDccEX("<F 3 20 0>", SOUND_DELAY);
+            GUI_text = "Coal unloading";
+        }
+        else if (GUI_data == 61) {
+            sendDataDccEX("<F 3 21 1>");
+            sendDataDccEX("<F 3 21 0>", SOUND_DELAY);
+            GUI_text = "Water filling tank";
+        }
     }
 
     // K3 Stainz Sounds (65-79)
-    else if (GUI_data == 67) {
-        GUI_text = "Conductor calling";
-        tft.setCursor(0,100);
-        tft.setTextSize(4);
-        tft.setTextColor(GC9A01A_BLUE);    
-        tft.println(GUI_text);
-        sendDataDccEX("<F 3 2 1>");
-        sendDataDccEX("<F 3 2 0>", SOUND_DELAY);
-    }
-    else if (GUI_data == 68) {
-        GUI_text = "Conductor's whistle";
-        sendDataDccEX("<F 3 3 1>");
-        sendDataDccEX("<F 3 3 0>", SOUND_DELAY);
-    }
-    else if (GUI_data == 70) {
-        sendDataDccEX("<F 3 5 1>");
-        sendDataDccEX("<F 3 5 0>", SOUND_DELAY);
-        GUI_text = "Coal shoveling";
-    }
-    else if (GUI_data == 71) {
-        sendDataDccEX("<F 3 6 1>");
-        sendDataDccEX("<F 3 6 0>", SOUND_DELAY);
-        GUI_text = "Injector sound";
-    }
-    else if (GUI_data == 72) {
-        sendDataDccEX("<F 3 7 1>");
-        sendDataDccEX("<F 3 7 0>", SOUND_DELAY);
-        GUI_text = "Bell";
-    }
-    else if (GUI_data == 74) {
-        sendDataDccEX("<F 3 9 1>");
-        sendDataDccEX("<F 3 9 0>", SOUND_DELAY);
-        GUI_text = "Whistle";
-    } 
-    else if (GUI_data == 75) {
-        sendDataDccEX("<F 3 10 1>");
-        sendDataDccEX("<F 3 10 0>", SOUND_DELAY);
-        GUI_text = "Coupler / Uncoupler";
-    }
-    else if (GUI_data == 76) {
-        sendDataDccEX("<F 3 11 1>");
-        sendDataDccEX("<F 3 11 0>", SOUND_DELAY);
-        GUI_text = "Air pump";
-    }
-    else if (GUI_data == 77) {
-        sendDataDccEX("<F 3 12 1>");
-        sendDataDccEX("<F 3 12 0>", SOUND_DELAY);
-        GUI_text = "Boiler sound";
-    }
-    else if (GUI_data == 78) {
-        sendDataDccEX("<F 3 13 1>");
-        sendDataDccEX("<F 3 13 0>", SOUND_DELAY);
-        GUI_text = "Steam venting";
-    }
+    if (Train_selection == 1) {
+        if (GUI_data == 67) {
+            GUI_text = "Conductor calling";
+            sendDataDccEX("<F 3 2 1>");
+            sendDataDccEX("<F 3 2 0>", SOUND_DELAY);
+        }
+        else if (GUI_data == 68) {
+            GUI_text = "Conductor's whistle";
+            sendDataDccEX("<F 3 3 1>");
+            sendDataDccEX("<F 3 3 0>", SOUND_DELAY);
+        }
+        else if (GUI_data == 70) {
+            sendDataDccEX("<F 3 5 1>");
+            sendDataDccEX("<F 3 5 0>", SOUND_DELAY);
+            GUI_text = "Coal shoveling";
+        }
+        else if (GUI_data == 71) {
+            sendDataDccEX("<F 3 6 1>");
+            sendDataDccEX("<F 3 6 0>", SOUND_DELAY);
+            GUI_text = "Injector sound";
+        }
+        else if (GUI_data == 72) {
+            sendDataDccEX("<F 3 7 1>");
+            sendDataDccEX("<F 3 7 0>", SOUND_DELAY);
+            GUI_text = "Bell";
+        }
+        else if (GUI_data == 74) {
+            sendDataDccEX("<F 3 9 1>");
+            sendDataDccEX("<F 3 9 0>", SOUND_DELAY);
+            GUI_text = "Whistle";
+        } 
+        else if (GUI_data == 75) {
+            sendDataDccEX("<F 3 10 1>");
+            sendDataDccEX("<F 3 10 0>", SOUND_DELAY);
+            GUI_text = "Coupler / Uncoupler";
+        }
+        else if (GUI_data == 76) {
+            sendDataDccEX("<F 3 11 1>");
+            sendDataDccEX("<F 3 11 0>", SOUND_DELAY);
+            GUI_text = "Air pump";
+        }
+        else if (GUI_data == 77) {
+            sendDataDccEX("<F 3 12 1>");
+            sendDataDccEX("<F 3 12 0>", SOUND_DELAY);
+            GUI_text = "Boiler sound";
+        }
+        else if (GUI_data == 78) {
+            sendDataDccEX("<F 3 13 1>");
+            sendDataDccEX("<F 3 13 0>", SOUND_DELAY);
+            GUI_text = "Steam venting";
+        }
+    }    
 }
 
 //============================================================
@@ -429,25 +436,68 @@ void processSoundEffects() {
 //============================================================
 void processRfidData() {
     // Process sound effects
-    if (RFID_data == 42) {
-        RFID_text = "Long Whistles";
-        sendDataDccEX("<F 3 2 1>");
-        sendDataDccEX("<F 3 2 0>", SOUND_DELAY);
+    if (Train_selection == 0) {         // American Mogul
+        if (RFID_data == 42) {
+            RFID_text = "Long Whistles";
+            sendDataDccEX("<F 3 2 1>");
+            sendDataDccEX("<F 3 2 0>", SOUND_DELAY);
+        }
+        else if (RFID_data == 43) {
+            RFID_text = "Whistle";
+            sendDataDccEX("<F 3 3 1>");
+            sendDataDccEX("<F 3 3 0>", SOUND_DELAY);
+        }
+        else if (RFID_data == 44) {
+            RFID_text = "Short Whistle";
+            sendDataDccEX("<F 3 4 1>");
+            sendDataDccEX("<F 3 4 0>", SOUND_DELAY);
+        }
+        else if (RFID_data == 41) {
+            RFID_text = "Bell";
+            sendDataDccEX("<F 3 1 1>");
+            sendDataDccEX("<F 3 1 0>", SOUND_DELAY);
+        }
     }
-    else if (RFID_data == 43) {
-        RFID_text = "Whistle";
-        sendDataDccEX("<F 3 9 1>");
-        sendDataDccEX("<F 3 9 0>", SOUND_DELAY);
+
+    if (Train_selection == 1) {            // K3
+        if (RFID_data == 43) {
+            RFID_text = "Whistle";
+            sendDataDccEX("<F 3 9 1>");
+            sendDataDccEX("<F 3 9 0>", SOUND_DELAY);
+        }
+        else if (RFID_data == 41) {
+            RFID_text = "Bell";
+            sendDataDccEX("<F 3 7 1>");
+            sendDataDccEX("<F 3 7 0>", SOUND_DELAY);
+        }
     }
-    else if (RFID_data == 44) {
-        RFID_text = "Short Whistle";
-        sendDataDccEX("<F 3 4 1>");
-        sendDataDccEX("<F 3 4 0>", SOUND_DELAY);
+
+
+
+    // Process station data
+    else if (RFID_data == 25) {
+        RFID_text = "Station 1";
+        sendDataGui(25);
     }
-    else if (RFID_data == 41) {
-        RFID_text = "Bell";
-        sendDataDccEX("<F 3 7 1>");
-        sendDataDccEX("<F 3 7 0>", SOUND_DELAY);
+    else if (RFID_data == 26) {
+        RFID_text = "Station 2";
+        sendDataGui(26);
+    }
+    else if (RFID_data == 27) {
+        RFID_text = "Station 3";
+        sendDataGui(27);
+    }
+    else if (RFID_data == 28) {
+        RFID_text = "Station 4";
+        sendDataGui(28);
+    }
+    else if (RFID_data == 29) {
+        RFID_text = "Station 5";
+        sendDataGui(29);
+    }
+    else if (RFID_data == 30) {
+        RFID_text = "Station 6";
+        sendDataGui(30);
     }
 
     // Process speed settings
@@ -549,6 +599,25 @@ void updateRfidDisplay(String text) {
 
     timer.setTimeout(1000, [width]() {
         tft.fillRect(0, 320, width, 64, GC9A01A_BLACK);
+    });
+}
+
+void updateMotionDisplay(String text) {
+    int width = tft.width();
+    int textSizeBody = 3;
+
+    tft.setTextWrap(false);
+    tft.fillRect(0, 450, width, 32, GC9A01A_BLACK);
+
+    int commandX = (width - (text.length() * 6 * textSizeBody)) / 2;
+    tft.setTextSize(textSizeBody);
+    tft.setCursor(commandX, 450);
+    tft.setTextColor(GC9A01A_BLUE);
+    tft.print(text);
+    tft.println(train_speed);
+
+ //   timer.setTimeout(1000, [width]() {
+ //       tft.fillRect(0, 320, width, 64, GC9A01A_BLACK);
     });
 }
 
