@@ -3,7 +3,7 @@
 // Uses Arduino Giga to interface with DCC-EX, RFID and GUI
 //============================================================
 
-int Train_selection = 1;     // K3 Stanz (K3) = 1, American Mogul (AM) = 0
+int Train_selection = 1;     // K3 Stainz (K3) = 1, American Mogul (AM) = 0
 
 // Include libraries
 #include "Arduino_GigaDisplay_GFX.h"
@@ -101,9 +101,7 @@ void setup() {
     SerialUSB.begin(115200);
     Serial2.begin(115200);   
     Serial3.begin(115200);
-    Serial4.begin(115200);
-
-    
+    Serial4.begin(115200); 
 
     // Initialize display
     tft.begin();
@@ -593,7 +591,7 @@ void updateGuiDisplay(String text) {
     tft.setTextWrap(false);
     tft.fillRect(0, 100, width, 64, GC9A01A_BLACK);
 
-    String header = "GUI Command:";
+    String header = "= GUI Command =";
     int headerX = (width - (header.length() * 6 * textSizeHeader)) / 2;
     tft.setTextSize(textSizeHeader);
     tft.setCursor(headerX, 100);
@@ -619,7 +617,7 @@ void updateRfidDisplay(String text) {
     tft.setTextWrap(false);
     tft.fillRect(0, 250, width, 64, GC9A01A_BLACK);
 
-    String header = "RFID Command:";
+    String header = "= RFID Command =";
     int headerX = (width - (header.length() * 6 * textSizeHeader)) / 2;
     tft.setTextSize(textSizeHeader);
     tft.setCursor(headerX, 250);
@@ -675,13 +673,13 @@ void updateSwitchDisplay() {
     tft.setTextColor(GC9A01A_WHITE);
 
     if (light_switch == 1) {
-        tft.fillRect(50, 600, 289, 32, GC9A01A_BLACK);
-        tft.setCursor(50, 600);
+        tft.fillRect(40, 600, 289, 32, GC9A01A_BLACK);
+        tft.setCursor(40, 600);
         tft.print("Lights ON");
         }
       else {
-        tft.fillRect(50, 600, 289, 32, GC9A01A_BLACK);
-        tft.setCursor(50, 600);
+        tft.fillRect(40, 600, 289, 32, GC9A01A_BLACK);
+        tft.setCursor(40, 600);
         tft.print("Lights OFF");
         }
 
@@ -697,13 +695,13 @@ void updateSwitchDisplay() {
         } 
 
     if (RFID_sensor == 1) {
-        tft.fillRect(50, 660, 289, 32, GC9A01A_BLACK);
-        tft.setCursor(50, 660);
+        tft.fillRect(40, 660, 289, 32, GC9A01A_BLACK);
+        tft.setCursor(40, 660);
         tft.print("RFID ON ");
         }
       else {
-        tft.fillRect(50, 660, 289, 32, GC9A01A_BLACK);
-        tft.setCursor(50, 660);
+        tft.fillRect(40, 660, 289, 32, GC9A01A_BLACK);
+        tft.setCursor(40, 660);
         tft.print("RFID OFF");
         }
 
