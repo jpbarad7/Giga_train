@@ -643,28 +643,89 @@ void updateRfidDisplay(String text) {
 void updateMotionDisplay(String text) {
     int width = tft.width();
     int textSizeBody = 3;
-
+    
+    // Button specifications
+    int buttonHeight = 63;    // Same height as buttons in updateSwitchDisplay
+    int margin = 20;          // Same margin as in updateSwitchDisplay
+    int singleButtonWidth = 220; // Width of a single button from updateSwitchDisplay
+    int buttonWidth = 2 * singleButtonWidth + margin; // Width of two buttons plus margin
+    int cornerRadius = 8;     // Same radius for rounded corners
+    
+    // Calculate the horizontal center position
+    int buttonX = (width - buttonWidth) / 2;
+    
+    // Y position for the button (using 400 from the original function)
+    int buttonY = 400;
+    
+    // Darker gray background color (two shades darker)
+    uint16_t darkerGrayColor = tft.color565(80, 80, 80); // Changed from 128 to 80
+    
+    // Clear the area
+    tft.fillRect(0, buttonY, width, buttonHeight, GC9A01A_BLACK);
+    
+    // Draw the darker gray button with white border
+    tft.fillRoundRect(buttonX, buttonY, buttonWidth, buttonHeight, cornerRadius, darkerGrayColor);
+    tft.drawRoundRect(buttonX, buttonY, buttonWidth, buttonHeight, cornerRadius, GC9A01A_WHITE);
+    
+    // Calculate text position to center it in the button
+    int16_t x1, y1;
+    uint16_t textWidth, textHeight;
+    tft.getTextBounds(text, 0, 0, &x1, &y1, &textWidth, &textHeight);
+    
+    int textX = buttonX + (buttonWidth - textWidth) / 2;
+    int textY = buttonY + (buttonHeight / 2) - 10; // Vertical center adjustment like in updateSwitchDisplay
+    
+    // Set text properties and print
     tft.setTextWrap(false);
-    tft.fillRect(0, 400, width, 32, GC9A01A_BLACK);
-
-    int commandX = (width - (text.length() * 6 * textSizeBody)) / 2;
     tft.setTextSize(textSizeBody);
-    tft.setCursor(commandX, 400);
-    tft.setTextColor(GC9A01A_MAGENTA);
+    tft.setTextColor(GC9A01A_WHITE);
+    tft.setCursor(textX, textY);
     tft.print(text);
 }
 
 void updateSpeedDisplay(String text) {
     int width = tft.width();
     int textSizeBody = 3;
-
+    
+    // Button specifications - matching the updateMotionDisplay button
+    int buttonHeight = 63;    // Same height as buttons in updateSwitchDisplay
+    int margin = 20;          // Same margin as in updateSwitchDisplay
+    int singleButtonWidth = 220; // Width of a single button from updateSwitchDisplay
+    int buttonWidth = 2 * singleButtonWidth + margin; // Width of two buttons plus margin
+    int cornerRadius = 8;     // Same radius for rounded corners
+    
+    // Calculate the horizontal center position
+    int buttonX = (width - buttonWidth) / 2;
+    
+    // Calculate Y position for the button
+    // The button in updateMotionDisplay is at y=400
+    // Use the same vertical spacing as in updateSwitchDisplay (which was 20 pixels)
+    int motionButtonY = 400;
+    int speedButtonY = motionButtonY + buttonHeight + 20; // 20 is the vertical gap
+    
+    // Darker gray background color - same as updateMotionDisplay
+    uint16_t darkerGrayColor = tft.color565(80, 80, 80);
+    
+    // Clear the area
+    tft.fillRect(0, speedButtonY, width, buttonHeight, GC9A01A_BLACK);
+    
+    // Draw the darker gray button with white border
+    tft.fillRoundRect(buttonX, speedButtonY, buttonWidth, buttonHeight, cornerRadius, darkerGrayColor);
+    tft.drawRoundRect(buttonX, speedButtonY, buttonWidth, buttonHeight, cornerRadius, GC9A01A_WHITE);
+    
+    // Calculate text position to center it in the button
+    int16_t x1, y1;
+    uint16_t textWidth, textHeight;
+    tft.getTextBounds(text, 0, 0, &x1, &y1, &textWidth, &textHeight);
+    
+    int textX = buttonX + (buttonWidth - textWidth) / 2;
+    int textY = speedButtonY + (buttonHeight / 2) - 10; // Vertical center adjustment
+    
+    // Set text properties and print
     tft.setTextWrap(false);
-    tft.fillRect(0, 450, width, 32, GC9A01A_BLACK);
-
-    int commandX = (width - (text.length() * 6 * textSizeBody)) / 2;
     tft.setTextSize(textSizeBody);
-    tft.setCursor(commandX, 450);
-    tft.setTextColor(GC9A01A_GREEN);
+    tft.setTextColor(GC9A01A_WHITE); // Changed from GREEN to WHITE
+    tft.setCursor(textX, textY);
     tft.print(text);
 }
 
