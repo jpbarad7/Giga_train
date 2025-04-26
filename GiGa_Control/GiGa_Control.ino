@@ -609,14 +609,14 @@ void updateGuiDisplay(String text) {
     int distanceFromEdge = 800 - (650 + standardButtonHeight);
     int topButtonY = distanceFromEdge - 20; // Moved up 20 pixels
     
-    // Darker gray background color (one shade darker)
-    uint16_t darkerGrayColor = tft.color565(160, 160, 160); // Reduced from 192 to 160
+    // Use the same darker blue color as in SwitchDisplay
+    uint16_t darkerBlue = tft.color565(0, 0, 80); // Darker navy blue matching SwitchDisplay
     
     // Clear the area
     tft.fillRect(0, topButtonY, width, buttonHeight, GC9A01A_BLACK);
     
-    // Draw the darker gray button with white border
-    tft.fillRoundRect(buttonX, topButtonY, buttonWidth, buttonHeight, cornerRadius, darkerGrayColor);
+    // Draw the darker blue button with white border
+    tft.fillRoundRect(buttonX, topButtonY, buttonWidth, buttonHeight, cornerRadius, darkerBlue);
     tft.drawRoundRect(buttonX, topButtonY, buttonWidth, buttonHeight, cornerRadius, GC9A01A_WHITE);
     
     // Set text properties
@@ -642,7 +642,7 @@ void updateGuiDisplay(String text) {
     tft.getTextBounds(text, 0, 0, &x1, &y1, &textWidth, &textHeight);
     
     int commandX = buttonX + (buttonWidth - textWidth) / 2;
-    int commandY = topButtonY + buttonHeight * 3/4; // Position at 3/4 of the button height
+    int commandY = topButtonY + buttonHeight * 5/8; // Changed from 3/4 to 5/8 of the button height
     
     tft.setCursor(commandX, commandY);
     tft.print(text);
@@ -651,9 +651,9 @@ void updateGuiDisplay(String text) {
     int originalY = topButtonY;
     
     // Set timeout to clear the command text but keep the button and header
-    timer.setTimeout(1500, [width, buttonX, originalY, buttonWidth, buttonHeight, cornerRadius, darkerGrayColor, header, textSizeHeader, headerX, headerY]() {
+    timer.setTimeout(1500, [width, buttonX, originalY, buttonWidth, buttonHeight, cornerRadius, darkerBlue, header, textSizeHeader, headerX, headerY]() {
         // Redraw the button
-        tft.fillRoundRect(buttonX, originalY, buttonWidth, buttonHeight, cornerRadius, darkerGrayColor);
+        tft.fillRoundRect(buttonX, originalY, buttonWidth, buttonHeight, cornerRadius, darkerBlue);
         tft.drawRoundRect(buttonX, originalY, buttonWidth, buttonHeight, cornerRadius, GC9A01A_WHITE);
         
         // Redraw only the header text
@@ -688,14 +688,14 @@ void updateRfidDisplay(String text) {
     // Position the second button below the first with the same spacing
     int bottomButtonY = topButtonY + buttonHeight + verticalSpacing;
     
-    // Darker gray background color (one shade darker)
-    uint16_t darkerGrayColor = tft.color565(160, 160, 160); // Reduced from 192 to 160
+    // Red background color
+    uint16_t redBackgroundColor = tft.color565(160, 0, 0); // Deep red color
     
     // Clear the area
     tft.fillRect(0, bottomButtonY, width, buttonHeight, GC9A01A_BLACK);
     
-    // Draw the darker gray button with white border
-    tft.fillRoundRect(buttonX, bottomButtonY, buttonWidth, buttonHeight, cornerRadius, darkerGrayColor);
+    // Draw the red button with white border
+    tft.fillRoundRect(buttonX, bottomButtonY, buttonWidth, buttonHeight, cornerRadius, redBackgroundColor);
     tft.drawRoundRect(buttonX, bottomButtonY, buttonWidth, buttonHeight, cornerRadius, GC9A01A_WHITE);
     
     // Set text properties
@@ -721,7 +721,7 @@ void updateRfidDisplay(String text) {
     tft.getTextBounds(text, 0, 0, &x1, &y1, &textWidth, &textHeight);
     
     int commandX = buttonX + (buttonWidth - textWidth) / 2;
-    int commandY = bottomButtonY + buttonHeight * 3/4; // Position at 3/4 of the button height
+    int commandY = bottomButtonY + buttonHeight * 5/8; // Changed from 3/4 to 5/8 of the button height
     
     tft.setCursor(commandX, commandY);
     tft.print(text);
@@ -730,9 +730,9 @@ void updateRfidDisplay(String text) {
     int originalY = bottomButtonY;
     
     // Set timeout to clear the command text but keep the button and header
-    timer.setTimeout(1500, [width, buttonX, originalY, buttonWidth, buttonHeight, cornerRadius, darkerGrayColor, header, textSizeHeader, headerX, headerY]() {
+    timer.setTimeout(1500, [width, buttonX, originalY, buttonWidth, buttonHeight, cornerRadius, redBackgroundColor, header, textSizeHeader, headerX, headerY]() {
         // Redraw the button
-        tft.fillRoundRect(buttonX, originalY, buttonWidth, buttonHeight, cornerRadius, darkerGrayColor);
+        tft.fillRoundRect(buttonX, originalY, buttonWidth, buttonHeight, cornerRadius, redBackgroundColor);
         tft.drawRoundRect(buttonX, originalY, buttonWidth, buttonHeight, cornerRadius, GC9A01A_WHITE);
         
         // Redraw only the header text
@@ -758,7 +758,7 @@ void updateMotionDisplay(String text) {
     int buttonX = (width - buttonWidth) / 2;
     
     // Y position for the button (using 400 from the original function)
-    int buttonY = 400;
+    int buttonY = 408;
     
     // Darker gray background color (two shades darker)
     uint16_t darkerGrayColor = tft.color565(80, 80, 80); // Changed from 128 to 80
@@ -801,9 +801,9 @@ void updateSpeedDisplay(String text) {
     int buttonX = (width - buttonWidth) / 2;
     
     // Calculate Y position for the button
-    // The button in updateMotionDisplay is at y=400
+    // The button in updateMotionDisplay is at y=408
     // Use the same vertical spacing as in updateSwitchDisplay (which was 20 pixels)
-    int motionButtonY = 400;
+    int motionButtonY = 408;
     int speedButtonY = motionButtonY + buttonHeight + 20; // 20 is the vertical gap
     
     // Darker gray background color - same as updateMotionDisplay
