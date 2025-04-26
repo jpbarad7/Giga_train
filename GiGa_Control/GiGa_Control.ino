@@ -171,14 +171,19 @@ void parseIncomingData() {
     //-----------------------------------
     // Process RFID data
     //-----------------------------------
-    if ((Serial2.available() && (RFID_sensor == 1))) {
+    if (RFID_sensor == 1 && Serial2.available()) {
         uint8_t rfidChar = Serial2.read();  
         RFID_data = (int)rfidChar;
         new_RFID_data = true;
         
         SerialUSB.print("RFID Data Received: ");
         SerialUSB.println(RFID_data);
+
+    } else if (RFID_sensor == 0 && Serial2.available()) {
+    // Discard data when RFID sensor is off
+    Serial2.read();
     }
+
 
     if ((new_RFID_data) && (RFID_sensor == 1)) {
         processRfidData();
