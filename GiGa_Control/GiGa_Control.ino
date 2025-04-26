@@ -670,13 +670,13 @@ void updateSpeedDisplay(String text) {
 
 void updateSwitchDisplay() {
     int width = tft.width();  // Get screen width
-    int buttonHeight = 50;    // Button height
+    int buttonHeight = 63;    // Button height increased by 25% (from 50 to 63)
     int buttonWidth = 220;    // Button width
     int cornerRadius = 8;     // Radius for rounded corners
     int textSizeBody = 3;
     
-    // Define a dark blue color using color565 function
-    uint16_t darkBlue = tft.color565(0, 0, 128); // Navy blue
+    // Define a darker blue color using color565 function
+    uint16_t darkerBlue = tft.color565(0, 0, 80); // Darker navy blue (was 128, now 80)
     
     // Calculate horizontal positioning - bringing the buttons closer horizontally
     int margin = 20;          // Reduced space between buttons (was 30)
@@ -687,21 +687,21 @@ void updateSwitchDisplay() {
     int leftButtonX = sideMargin;
     int rightButtonX = leftButtonX + buttonWidth + margin;
     
-    // Y positions - increased vertical spacing between button rows
-    int topRowY = 580;       // Moved up slightly
-    int bottomRowY = 670;    // More separation between rows
+    // Y positions - maintain the same spacing between button rows
+    int topRowY = 580;
+    int bottomRowY = topRowY + buttonHeight + 20; // 20 is the original gap
     
     tft.setTextWrap(false);
     tft.setTextSize(textSizeBody);
     tft.setTextColor(GC9A01A_WHITE);
 
-    // Adjusted vertical positioning - moved down slightly to center the text better
-    int textYAdjustment = buttonHeight/2 - 10; // Adjusted from -15 to -10
+    // Adjusted vertical positioning for the taller buttons
+    int textYAdjustment = buttonHeight/2 - 10; // Keeps text vertically centered
     
     // Lights button
     if (light_switch == 1) {
         const char* text = "Lights ON";
-        tft.fillRoundRect(leftButtonX, topRowY, buttonWidth, buttonHeight, cornerRadius, darkBlue);
+        tft.fillRoundRect(leftButtonX, topRowY, buttonWidth, buttonHeight, cornerRadius, darkerBlue);
         tft.drawRoundRect(leftButtonX, topRowY, buttonWidth, buttonHeight, cornerRadius, GC9A01A_WHITE);
         
         int16_t x1, y1;
@@ -714,7 +714,7 @@ void updateSwitchDisplay() {
         tft.print(text);
     } else {
         const char* text = "Lights OFF";
-        tft.fillRoundRect(leftButtonX, topRowY, buttonWidth, buttonHeight, cornerRadius, darkBlue);
+        tft.fillRoundRect(leftButtonX, topRowY, buttonWidth, buttonHeight, cornerRadius, darkerBlue);
         tft.drawRoundRect(leftButtonX, topRowY, buttonWidth, buttonHeight, cornerRadius, GC9A01A_WHITE);
         
         int16_t x1, y1;
@@ -730,7 +730,7 @@ void updateSwitchDisplay() {
     // Smoke button
     if (smoke_switch == 1) {
         const char* text = "Smoke ON";
-        tft.fillRoundRect(rightButtonX, topRowY, buttonWidth, buttonHeight, cornerRadius, darkBlue);
+        tft.fillRoundRect(rightButtonX, topRowY, buttonWidth, buttonHeight, cornerRadius, darkerBlue);
         tft.drawRoundRect(rightButtonX, topRowY, buttonWidth, buttonHeight, cornerRadius, GC9A01A_WHITE);
         
         int16_t x1, y1;
@@ -743,7 +743,7 @@ void updateSwitchDisplay() {
         tft.print(text);
     } else {
         const char* text = "Smoke OFF";
-        tft.fillRoundRect(rightButtonX, topRowY, buttonWidth, buttonHeight, cornerRadius, darkBlue);
+        tft.fillRoundRect(rightButtonX, topRowY, buttonWidth, buttonHeight, cornerRadius, darkerBlue);
         tft.drawRoundRect(rightButtonX, topRowY, buttonWidth, buttonHeight, cornerRadius, GC9A01A_WHITE);
         
         int16_t x1, y1;
@@ -759,7 +759,7 @@ void updateSwitchDisplay() {
     // RFID button
     if (RFID_sensor == 1) {
         const char* text = "RFID ON";
-        tft.fillRoundRect(leftButtonX, bottomRowY, buttonWidth, buttonHeight, cornerRadius, darkBlue);
+        tft.fillRoundRect(leftButtonX, bottomRowY, buttonWidth, buttonHeight, cornerRadius, darkerBlue);
         tft.drawRoundRect(leftButtonX, bottomRowY, buttonWidth, buttonHeight, cornerRadius, GC9A01A_WHITE);
         
         int16_t x1, y1;
@@ -772,7 +772,7 @@ void updateSwitchDisplay() {
         tft.print(text);
     } else {
         const char* text = "RFID OFF";
-        tft.fillRoundRect(leftButtonX, bottomRowY, buttonWidth, buttonHeight, cornerRadius, darkBlue);
+        tft.fillRoundRect(leftButtonX, bottomRowY, buttonWidth, buttonHeight, cornerRadius, darkerBlue);
         tft.drawRoundRect(leftButtonX, bottomRowY, buttonWidth, buttonHeight, cornerRadius, GC9A01A_WHITE);
         
         int16_t x1, y1;
@@ -788,7 +788,7 @@ void updateSwitchDisplay() {
     // Park button
     if (park_switch == 1) {
         const char* text = "Park ON";
-        tft.fillRoundRect(rightButtonX, bottomRowY, buttonWidth, buttonHeight, cornerRadius, darkBlue);
+        tft.fillRoundRect(rightButtonX, bottomRowY, buttonWidth, buttonHeight, cornerRadius, darkerBlue);
         tft.drawRoundRect(rightButtonX, bottomRowY, buttonWidth, buttonHeight, cornerRadius, GC9A01A_WHITE);
         
         int16_t x1, y1;
@@ -801,7 +801,7 @@ void updateSwitchDisplay() {
         tft.print(text);
     } else {
         const char* text = "Park OFF";
-        tft.fillRoundRect(rightButtonX, bottomRowY, buttonWidth, buttonHeight, cornerRadius, darkBlue);
+        tft.fillRoundRect(rightButtonX, bottomRowY, buttonWidth, buttonHeight, cornerRadius, darkerBlue);
         tft.drawRoundRect(rightButtonX, bottomRowY, buttonWidth, buttonHeight, cornerRadius, GC9A01A_WHITE);
         
         int16_t x1, y1;
@@ -814,6 +814,7 @@ void updateSwitchDisplay() {
         tft.print(text);
     }
 }
+
 //============================================================
 // Communication Functions
 //============================================================
