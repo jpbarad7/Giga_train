@@ -70,7 +70,7 @@ String lastRFIDData = "";
 String GUI_text = "";
 String RFID_text = "";
 String Motion_text = "Train Parked";
-String Speed_text = "";
+String Speed_text = "Speed = 0";
 
 // Initialize objects
 GigaDisplay_GFX tft;
@@ -128,6 +128,7 @@ void setup() {
     updateGuiDisplay(GUI_text);
     updateRfidDisplay(RFID_text);
     updateMotionDisplay(Motion_text);
+    updateSpeedDisplay(Speed_text);
     updateSwitchDisplay();
      
 }
@@ -281,7 +282,7 @@ void processGuiData() {
 
         if (train_speed == 0) {
             Motion_text = "Train STOPPED";
-            Speed_text = "";
+            Speed_text = "Speed = 0";
         }
         else {
             if (train_direction == 1) { 
@@ -564,13 +565,17 @@ void processRfidData() {
     if (park_switch == 1 && train_direction == 1) {
         if (RFID_data == 31) { 
             RFID_text = "Speed 50%";
+            Motion_text = "Train Parking 1";
             train_speed = 5; 
             sendDataDccEX("<t 1 03 50 1>");
+            updateMotionDisplay(Motion_text);
         }
         else if (RFID_data == 32) { 
             RFID_text = "Speed 30%";
+            Motion_text = "Train Parking 2";
             train_speed = 3; 
             sendDataDccEX("<t 1 03 30 1>");
+            updateMotionDisplay(Motion_text);
         }
         else if (RFID_data == 33) { 
             RFID_text = "Parked";
@@ -806,14 +811,14 @@ void updateSpeedDisplay(String text) {
     int motionButtonY = 408;
     int speedButtonY = motionButtonY + buttonHeight + 20; // 20 is the vertical gap
     
-    // Darker gray background color - same as updateMotionDisplay
-    uint16_t darkerGrayColor = tft.color565(80, 80, 80);
+    // Changed to green background color
+    uint16_t greenColor = tft.color565(0, 150, 0);
     
     // Clear the area
     tft.fillRect(0, speedButtonY, width, buttonHeight, GC9A01A_BLACK);
     
-    // Draw the darker gray button with white border
-    tft.fillRoundRect(buttonX, speedButtonY, buttonWidth, buttonHeight, cornerRadius, darkerGrayColor);
+    // Draw the green button with white border
+    tft.fillRoundRect(buttonX, speedButtonY, buttonWidth, buttonHeight, cornerRadius, greenColor);
     tft.drawRoundRect(buttonX, speedButtonY, buttonWidth, buttonHeight, cornerRadius, GC9A01A_WHITE);
     
     // Calculate text position to center it in the button
@@ -827,7 +832,7 @@ void updateSpeedDisplay(String text) {
     // Set text properties and print
     tft.setTextWrap(false);
     tft.setTextSize(textSizeBody);
-    tft.setTextColor(GC9A01A_WHITE); // Changed from GREEN to WHITE
+    tft.setTextColor(GC9A01A_WHITE);
     tft.setCursor(textX, textY);
     tft.print(text);
 }
