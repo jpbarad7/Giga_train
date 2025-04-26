@@ -592,25 +592,75 @@ void updateGuiDisplay(String text) {
     int width = tft.width();
     int textSizeHeader = 3;
     int textSizeBody = 3;
-
+    
+    // Button specifications
+    int standardButtonHeight = 63;    // Height of buttons in previous functions
+    int verticalSpacing = 20;         // Spacing used in previous buttons
+    int buttonHeight = 2 * standardButtonHeight + verticalSpacing; // Height of two buttons plus spacing
+    int margin = 20;                  // Same margin as in updateSwitchDisplay
+    int singleButtonWidth = 220;      // Width of a single button from updateSwitchDisplay
+    int buttonWidth = 2 * singleButtonWidth + margin; // Width of two buttons plus margin
+    int cornerRadius = 8;             // Same radius for rounded corners
+    
+    // Calculate the horizontal center position
+    int buttonX = (width - buttonWidth) / 2;
+    
+    // Position the top button 20 pixels higher than before
+    int distanceFromEdge = 800 - (650 + standardButtonHeight);
+    int topButtonY = distanceFromEdge - 20; // Moved up 20 pixels
+    
+    // Darker gray background color (one shade darker)
+    uint16_t darkerGrayColor = tft.color565(160, 160, 160); // Reduced from 192 to 160
+    
+    // Clear the area
+    tft.fillRect(0, topButtonY, width, buttonHeight, GC9A01A_BLACK);
+    
+    // Draw the darker gray button with white border
+    tft.fillRoundRect(buttonX, topButtonY, buttonWidth, buttonHeight, cornerRadius, darkerGrayColor);
+    tft.drawRoundRect(buttonX, topButtonY, buttonWidth, buttonHeight, cornerRadius, GC9A01A_WHITE);
+    
+    // Set text properties
     tft.setTextWrap(false);
-    tft.fillRect(0, 100, width, 64, GC9A01A_BLACK);
-
+    tft.setTextColor(GC9A01A_WHITE);
+    
+    // Draw header text
     String header = "= GUI Command =";
-    int headerX = (width - (header.length() * 6 * textSizeHeader)) / 2;
     tft.setTextSize(textSizeHeader);
-    tft.setCursor(headerX, 100);
-    tft.setTextColor(GC9A01A_CYAN);
+    
+    int16_t x1, y1;
+    uint16_t textWidth, textHeight;
+    tft.getTextBounds(header, 0, 0, &x1, &y1, &textWidth, &textHeight);
+    
+    int headerX = buttonX + (buttonWidth - textWidth) / 2;
+    int headerY = topButtonY + buttonHeight/4; // Position at 1/4 of the button height
+    
+    tft.setCursor(headerX, headerY);
     tft.print(header);
-
-    int commandX = (width - (text.length() * 6 * textSizeBody)) / 2;
+    
+    // Draw command text
     tft.setTextSize(textSizeBody);
-    tft.setCursor(commandX, 150);
-    tft.setTextColor(GC9A01A_YELLOW);
-    tft.println(text);
-
-    timer.setTimeout(1500, [width]() {
-        tft.fillRect(0, 150, width, 32, GC9A01A_BLACK);
+    tft.getTextBounds(text, 0, 0, &x1, &y1, &textWidth, &textHeight);
+    
+    int commandX = buttonX + (buttonWidth - textWidth) / 2;
+    int commandY = topButtonY + buttonHeight * 3/4; // Position at 3/4 of the button height
+    
+    tft.setCursor(commandX, commandY);
+    tft.print(text);
+    
+    // Store original Y position for the timer lambda
+    int originalY = topButtonY;
+    
+    // Set timeout to clear the command text but keep the button and header
+    timer.setTimeout(1500, [width, buttonX, originalY, buttonWidth, buttonHeight, cornerRadius, darkerGrayColor, header, textSizeHeader, headerX, headerY]() {
+        // Redraw the button
+        tft.fillRoundRect(buttonX, originalY, buttonWidth, buttonHeight, cornerRadius, darkerGrayColor);
+        tft.drawRoundRect(buttonX, originalY, buttonWidth, buttonHeight, cornerRadius, GC9A01A_WHITE);
+        
+        // Redraw only the header text
+        tft.setTextSize(textSizeHeader);
+        tft.setTextColor(GC9A01A_WHITE);
+        tft.setCursor(headerX, headerY);
+        tft.print(header);
     });
 }
 
@@ -618,25 +668,78 @@ void updateRfidDisplay(String text) {
     int width = tft.width();
     int textSizeHeader = 3;
     int textSizeBody = 3;
-
+    
+    // Button specifications
+    int standardButtonHeight = 63;    // Height of buttons in previous functions
+    int verticalSpacing = 20;         // Spacing used in previous buttons
+    int buttonHeight = 2 * standardButtonHeight + verticalSpacing; // Height of two buttons plus spacing
+    int margin = 20;                  // Same margin as in updateSwitchDisplay
+    int singleButtonWidth = 220;      // Width of a single button from updateSwitchDisplay
+    int buttonWidth = 2 * singleButtonWidth + margin; // Width of two buttons plus margin
+    int cornerRadius = 8;             // Same radius for rounded corners
+    
+    // Calculate the horizontal center position
+    int buttonX = (width - buttonWidth) / 2;
+    
+    // Get position of first button
+    int distanceFromEdge = 800 - (650 + standardButtonHeight);
+    int topButtonY = distanceFromEdge - 20; // First button moved up 20 pixels
+    
+    // Position the second button below the first with the same spacing
+    int bottomButtonY = topButtonY + buttonHeight + verticalSpacing;
+    
+    // Darker gray background color (one shade darker)
+    uint16_t darkerGrayColor = tft.color565(160, 160, 160); // Reduced from 192 to 160
+    
+    // Clear the area
+    tft.fillRect(0, bottomButtonY, width, buttonHeight, GC9A01A_BLACK);
+    
+    // Draw the darker gray button with white border
+    tft.fillRoundRect(buttonX, bottomButtonY, buttonWidth, buttonHeight, cornerRadius, darkerGrayColor);
+    tft.drawRoundRect(buttonX, bottomButtonY, buttonWidth, buttonHeight, cornerRadius, GC9A01A_WHITE);
+    
+    // Set text properties
     tft.setTextWrap(false);
-    tft.fillRect(0, 250, width, 64, GC9A01A_BLACK);
-
+    tft.setTextColor(GC9A01A_WHITE);
+    
+    // Draw header text
     String header = "= RFID Command =";
-    int headerX = (width - (header.length() * 6 * textSizeHeader)) / 2;
     tft.setTextSize(textSizeHeader);
-    tft.setCursor(headerX, 250);
-    tft.setTextColor(GC9A01A_CYAN);
+    
+    int16_t x1, y1;
+    uint16_t textWidth, textHeight;
+    tft.getTextBounds(header, 0, 0, &x1, &y1, &textWidth, &textHeight);
+    
+    int headerX = buttonX + (buttonWidth - textWidth) / 2;
+    int headerY = bottomButtonY + buttonHeight/4; // Position at 1/4 of the button height
+    
+    tft.setCursor(headerX, headerY);
     tft.print(header);
-
-    int commandX = (width - (text.length() * 6 * textSizeBody)) / 2;
+    
+    // Draw command text
     tft.setTextSize(textSizeBody);
-    tft.setCursor(commandX, 300);
-    tft.setTextColor(GC9A01A_RED);
-    tft.println(text);
-
-    timer.setTimeout(1500, [width]() {
-        tft.fillRect(0, 300, width, 32, GC9A01A_BLACK);
+    tft.getTextBounds(text, 0, 0, &x1, &y1, &textWidth, &textHeight);
+    
+    int commandX = buttonX + (buttonWidth - textWidth) / 2;
+    int commandY = bottomButtonY + buttonHeight * 3/4; // Position at 3/4 of the button height
+    
+    tft.setCursor(commandX, commandY);
+    tft.print(text);
+    
+    // Store original Y position for the timer lambda
+    int originalY = bottomButtonY;
+    
+    // Set timeout to clear the command text but keep the button and header
+    timer.setTimeout(1500, [width, buttonX, originalY, buttonWidth, buttonHeight, cornerRadius, darkerGrayColor, header, textSizeHeader, headerX, headerY]() {
+        // Redraw the button
+        tft.fillRoundRect(buttonX, originalY, buttonWidth, buttonHeight, cornerRadius, darkerGrayColor);
+        tft.drawRoundRect(buttonX, originalY, buttonWidth, buttonHeight, cornerRadius, GC9A01A_WHITE);
+        
+        // Redraw only the header text
+        tft.setTextSize(textSizeHeader);
+        tft.setTextColor(GC9A01A_WHITE);
+        tft.setCursor(headerX, headerY);
+        tft.print(header);
     });
 }
 
