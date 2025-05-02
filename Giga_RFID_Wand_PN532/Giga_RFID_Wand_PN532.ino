@@ -11,10 +11,7 @@
 #define BUTTON_B 14
 #define BUTTON_C 15
 
-// Display parameters
-#define D_HEIGHT 64
-#define D_WIDTH 128
-#define D_DELAY 1000
+#define D_DELAY 750
 
 // FeatherWing OLED specific initialization
 Adafruit_SH1107 display = Adafruit_SH1107(64, 128, &Wire);
@@ -173,7 +170,7 @@ void loop() {
       }
     } else if (mode == WRITE_MODE) {
       RFID();
-      delay(1000);
+      delay(750);
     }
   }
 
@@ -207,7 +204,7 @@ void RFID() {
 
   // For successful write
   displayCenteredText("Wrote:", D_DELAY);
-  delay(1000);
+  delay(500);
 
   // Get the command text for the current index
   char* commandText = (char*)trainCommandTextArray[trainCommandIndex];
