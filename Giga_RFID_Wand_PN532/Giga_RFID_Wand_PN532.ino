@@ -1,8 +1,8 @@
-#include <SPI.h>
 #include <Wire.h>
-#include <Adafruit_SH1107_Ext.h>
-#include <PN532_SPI.h>
-#include <PN532.h>
+#include <SPI.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SH110X.h>
+#include <Adafruit_PN532.h>
 #include <SimpleTimer.h>
 
 // Pin Definitions
@@ -16,9 +16,13 @@
 #define D_WIDTH 128
 #define D_DELAY 1000
 
-Adafruit_SH1107_Ext display(D_HEIGHT, D_WIDTH, &Wire, -1, 1000000, 1000000);
-PN532_SPI pn532spi(SPI, PN532_SS);
-PN532 nfc(pn532spi);
+// FeatherWing OLED specific initialization
+Adafruit_SH1107 display = Adafruit_SH1107(64, 128, &Wire);
+
+
+
+// Create the PN532 RFID/NFC reader with SPI communication
+Adafruit_PN532 nfc(PN532_SS, &SPI);
 
 #define WRITE_MODE 0
 #define READ_MODE 1
@@ -50,9 +54,69 @@ void tFIIncrementer(int inc);
 int tFIMatch(byte tagText[]);
 void RFID();
 
+// Single line centered text (clears after delay)
+void displayCenteredText(const char* text, int delayTime) {
+  display.clearDisplay();
+  display.setTextSize(2);
+
+  int16_t x1, y1;
+  uint16_t w, h;
+  display.getTextBounds(text, 0, 0, &x1, &y1, &w, &h);
+
+  int x = (display.width() - w) / 2;
+  int y = (display.height() - h) / 2;
+
+  display.setCursor(x, y);
+  display.print(text);
+  display.display();
+
+  if (delayTime > 0) {
+    delay(delayTime);
+    display.clearDisplay();
+    display.display();
+  }
+}
+
+// Two-line centered text (clears after delay)
+void displayCenteredTextTwoLines(const char* line1, const char* line2, int delayTime) {
+  display.clearDisplay();
+  display.setTextSize(2);
+
+  int16_t x1, y1, x2, y2;
+  uint16_t w1, h1, w2, h2;
+
+  display.getTextBounds(line1, 0, 0, &x1, &y1, &w1, &h1);
+  display.getTextBounds(line2, 0, 0, &x2, &y2, &w2, &h2);
+
+  const int lineSpacing = 2;
+  int totalHeight = h1 + h2 + lineSpacing;
+
+  int y1pos = (display.height() - totalHeight) / 2;
+  int y2pos = y1pos + h1 + lineSpacing;
+
+  int x1pos = (display.width() - w1) / 2;
+  int x2pos = (display.width() - w2) / 2;
+
+  display.setCursor(x1pos, y1pos);
+  display.print(line1);
+  display.setCursor(x2pos, y2pos);
+  display.print(line2);
+  display.display();
+
+  if (delayTime > 0) {
+    delay(delayTime);
+    display.clearDisplay();
+    display.display();
+  }
+}
+
+
 void setup() {
   Serial.begin(115200);
-  SPI.begin(5, 21, 19);
+  
+  SPI.begin();  // Initialize SPI bus
+  
+  // Initialize the NFC reader
   nfc.begin();
 
   uint32_t versiondata = nfc.getFirmwareVersion();
@@ -62,16 +126,24 @@ void setup() {
   }
   nfc.SAMConfig();
 
-  display.begin(0x3C, true);
-  display.setRotation(1);
-  display.setTextSize(2);
-  display.setTextColor(SH110X_WHITE, SH110X_BLACK);
+  // Initialize the OLED display (FeatherWing OLED specific)
+  if(!display.begin(0x3C, true)) {
+    Serial.println("SH1107 allocation failed");
+    for(;;);
+  }
+
+  // Set rotation specifically for FeatherWing OLED
+  display.setRotation(3);
+
+  // Clear the display initially
+  display.clearDisplay();
+  display.setTextColor(SH110X_WHITE);
 
   pinMode(BUTTON_A, INPUT_PULLUP);
   pinMode(BUTTON_B, INPUT_PULLUP);
   pinMode(BUTTON_C, INPUT_PULLUP);
 
-  display.centeredDisplay("Read","Mode",D_DELAY);
+  displayCenteredTextTwoLines("Read", "Mode", D_DELAY);
   timer.setInterval(30, buttons);
 }
 
@@ -79,7 +151,7 @@ void loop() {
   uint8_t uid[7];
   uint8_t uidLength;
 
-  if (nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLength)) {
+  if (nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLength, 100)) {
     if (mode == READ_MODE) {
       if (!nfc.mifareclassic_AuthenticateBlock(uid, uidLength, 4, 0, keya)) {
         Serial.println("Auth failed");
@@ -106,14 +178,13 @@ void loop() {
   }
 
   timer.run();
-  display.timerRun();
 }
 
 void RFID() {
   uint8_t uid[7];
   uint8_t uidLength;
 
-  if (!nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLength)) {
+  if (!nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLength, 100)) {
     Serial.println("No tag found.");
     return;
   }
@@ -126,7 +197,7 @@ void RFID() {
   for (int i=0; i<2; i++) {
     uint8_t blockData[16];
     memset(blockData, 0, 16);
-    memcpy(blockData, &trainCommandTextArray[trainCommandIndex][i*16],16);
+    memcpy(blockData, &trainCommandTextArray[trainCommandIndex][i*16], 16);
 
     if (!nfc.mifareclassic_WriteDataBlock(4+i, blockData)) {
       Serial.println("Write failed");
@@ -135,29 +206,29 @@ void RFID() {
   }
 
   // For successful write
-display.centeredDisplay("Wrote:", D_DELAY);
-delay(1000);
+  displayCenteredText("Wrote:", D_DELAY);
+  delay(1000);
 
-// Get the command text for the current index
-char* commandText = (char*)trainCommandTextArray[trainCommandIndex];
+  // Get the command text for the current index
+  char* commandText = (char*)trainCommandTextArray[trainCommandIndex];
 
-// Find if the command has a space (indicating two words)
-char* spacePos = strchr(commandText, ' ');
+  // Find if the command has a space (indicating two words)
+  char* spacePos = strchr(commandText, ' ');
 
-if (spacePos == NULL) {
-  // One word case - center it vertically and horizontally
-  display.centeredDisplay(commandText, D_DELAY);
-} else {
-  // Two word case - split and display on two lines
-  // Temporarily replace space with null terminator
-  *spacePos = '\0';
-  
-  // First word centered horizontally on top line, second word beneath it
-  display.centeredDisplay(commandText, spacePos + 1, D_DELAY);
-  
-  // Restore the space
-  *spacePos = ' ';
-}
+  if (spacePos == NULL) {
+    // One word case - center it vertically and horizontally
+    displayCenteredText(commandText, D_DELAY);
+  } else {
+    // Two word case - split and display on two lines
+    // Temporarily replace space with null terminator
+    *spacePos = '\0';
+    
+    // First word centered horizontally on top line, second word beneath it
+    displayCenteredTextTwoLines(commandText, spacePos + 1, D_DELAY);
+    
+    // Restore the space
+    *spacePos = ' ';
+  }
 }
 
 void buttons() {
@@ -172,7 +243,7 @@ void buttons() {
   if ((millis() - lastDebounceTime) > debounceDelay) {
     if (a == LOW && lastAState == HIGH) {
       mode = (mode == WRITE_MODE) ? READ_MODE : WRITE_MODE;
-      display.centeredDisplay((mode == WRITE_MODE) ? "Write" : "Read", "Mode", D_DELAY);
+      displayCenteredTextTwoLines((mode == WRITE_MODE) ? "Write" : "Read", "Mode", D_DELAY);
       
       // If entering write mode, reset the flag and clear the screen after a delay
       if (mode == WRITE_MODE) {
@@ -188,26 +259,22 @@ void buttons() {
     }
     
     if (mode == WRITE_MODE) {
-      if (b == LOW && lastBState == HIGH) {
+      if (c == LOW && lastCState == HIGH) {  // Button on pin 15 now scrolls down (increments)
         if (!firstCommandSelected) {
-          // First button press after entering write mode
           trainCommandIndex = 1;
           firstCommandSelected = true;
         } else {
-          // Normal increment
           tFIIncrementer(1);
           if (trainCommandIndex == 0) tFIIncrementer(1);
         }
         commandDisplay(trainCommandIndex);
       }
       
-      if (c == LOW && lastCState == HIGH) {
+      if (b == LOW && lastBState == HIGH) {  // Button on pin 14 now scrolls up (decrements)
         if (!firstCommandSelected) {
-          // First button press after entering write mode
-          trainCommandIndex = NUM_TRAIN_COMMANDS - 1; // Start from the last command
+          trainCommandIndex = NUM_TRAIN_COMMANDS - 1;
           firstCommandSelected = true;
         } else {
-          // Normal decrement
           tFIIncrementer(-1);
           if (trainCommandIndex == 0) tFIIncrementer(-1);
         }
@@ -223,44 +290,43 @@ void buttons() {
   lastCState = c;
 }
 
+
 void commandDisplay(int command){
   switch(command){
-    case 0: display.centeredDisplay("",D_DELAY); break;
-    case 1: display.centeredDisplay("Long","whistles",D_DELAY); break;
-    case 2: display.centeredDisplay("Whistle",D_DELAY); break;
-    case 3: display.centeredDisplay("Short","whistle",D_DELAY); break;
-    case 4: display.centeredDisplay("Bell",D_DELAY); break;
-    case 5: display.centeredDisplay("Speed 20%",D_DELAY); break;
-    case 6: display.centeredDisplay("Speed 40%",D_DELAY); break;
-    case 7: display.centeredDisplay("Speed 60%",D_DELAY); break;
-    case 8: display.centeredDisplay("Speed 80%",D_DELAY); break;
-    case 9: display.centeredDisplay("Speed 100%",D_DELAY); break;
-    case 10: display.centeredDisplay("Park","trigger 1",D_DELAY); break;
-    case 11: display.centeredDisplay("Park","trigger 2",D_DELAY); break;
-    case 12: display.centeredDisplay("Park",D_DELAY); break;
-    case 13: display.centeredDisplay("Station 1",D_DELAY); break;
-    case 14: display.centeredDisplay("Station 2",D_DELAY); break;
-    case 15: display.centeredDisplay("Station 3",D_DELAY); break;
-    case 16: display.centeredDisplay("Station 4",D_DELAY); break;
-    case 17: display.centeredDisplay("Station 5",D_DELAY); break;
-    case 18: display.centeredDisplay("Station 6",D_DELAY); break;
-    default: display.centeredDisplay("!No Match!",D_DELAY);
+    case 0: displayCenteredText("", D_DELAY); break;
+    case 1: displayCenteredTextTwoLines("Long", "whistles", D_DELAY); break;
+    case 2: displayCenteredText("Whistle", D_DELAY); break;
+    case 3: displayCenteredTextTwoLines("Short", "whistle", D_DELAY); break;
+    case 4: displayCenteredText("Bell", D_DELAY); break;
+    case 5: displayCenteredText("Speed 20%", D_DELAY); break;
+    case 6: displayCenteredText("Speed 40%", D_DELAY); break;
+    case 7: displayCenteredText("Speed 60%", D_DELAY); break;
+    case 8: displayCenteredText("Speed 80%", D_DELAY); break;
+    case 9: displayCenteredText("Speed 100%", D_DELAY); break;
+    case 10: displayCenteredTextTwoLines("Park", "trigger 1", D_DELAY); break;
+    case 11: displayCenteredTextTwoLines("Park", "trigger 2", D_DELAY); break;
+    case 12: displayCenteredText("Park", D_DELAY); break;
+    case 13: displayCenteredText("Station 1", D_DELAY); break;
+    case 14: displayCenteredText("Station 2", D_DELAY); break;
+    case 15: displayCenteredText("Station 3", D_DELAY); break;
+    case 16: displayCenteredText("Station 4", D_DELAY); break;
+    case 17: displayCenteredText("Station 5", D_DELAY); break;
+    case 18: displayCenteredText("Station 6", D_DELAY); break;
+    default: displayCenteredText("!No Match!", D_DELAY);
   }
 }
 
 void tFIIncrementer(int inc){
   trainCommandIndex += inc;
-  if(trainCommandIndex<0) trainCommandIndex=NUM_TRAIN_COMMANDS-1;
-  if(trainCommandIndex>=NUM_TRAIN_COMMANDS) trainCommandIndex=0;
+  if(trainCommandIndex < 0) trainCommandIndex = NUM_TRAIN_COMMANDS - 1;
+  if(trainCommandIndex >= NUM_TRAIN_COMMANDS) trainCommandIndex = 0;
 }
 
 int tFIMatch(byte tagText[]){
-  for(int i=0; i<NUM_TRAIN_COMMANDS; i++){
-    if(!strcmp((char*)tagText,(char*)trainCommandTextArray[i])){
+  for(int i = 0; i < NUM_TRAIN_COMMANDS; i++){
+    if(!strcmp((char*)tagText, (char*)trainCommandTextArray[i])){
       return i;
     }
   }
-  return NUM_TRAIN_COMMANDS+1;
+  return NUM_TRAIN_COMMANDS + 1;
 }
-
-
