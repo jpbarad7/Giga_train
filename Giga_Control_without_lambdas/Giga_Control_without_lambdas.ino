@@ -104,7 +104,6 @@ enum GuiSoundEffects {
     GUI_K3_STEAM_VENTING         = 178
 };
 
-
 //============================================================
 // Speed Symbolic Constants
 //============================================================
@@ -163,16 +162,49 @@ unsigned long motionDisplayClearTime = 0;
 unsigned long speedDisplayClearTime = 0;
 unsigned long switchDisplayClearTime = 0;
 
+// Timer callback data structures
+struct GuiDisplayTimerData {
+    int buttonX;
+    int originalY;
+    int buttonWidth;
+    int buttonHeight;
+    int cornerRadius;
+    uint16_t darkerBlue;
+    String header;
+    int textSizeHeader;
+    int headerX;
+    int headerY;
+};
 
+struct RfidDisplayTimerData {
+    int buttonX;
+    int originalY;
+    int buttonWidth;
+    int buttonHeight;
+    int cornerRadius;
+    uint16_t redBackgroundColor;
+    String header;
+    int textSizeHeader;
+    int headerX;
+    int headerY;
+};
+
+// Global callback data structures
+GuiDisplayTimerData guiTimerData;
+RfidDisplayTimerData rfidTimerData;
+
+// For delayed commands
+char dccCommandBuffer[64];
+int delayedGuiData = 0;
 
 //============================================================
-// Display aND Timer Setup
+// Display and Timer Setup
 //============================================================
 GigaDisplay_GFX tft;
 SimpleTimer timer;
 
 //============================================================
-// Function Declarations (rest in full sketch)
+// Function Declarations 
 //============================================================
 void parseIncomingData();
 void processGuiData();
@@ -191,6 +223,11 @@ void drawMotionHeaderOnly();
 void drawSpeedHeaderOnly();
 void drawSwitchHeaderOnly();
 
+// Callback functions that replace lambdas
+void guiDisplayTimerCallback();
+void rfidDisplayTimerCallback();
+void delayedDccCommand();
+void delayedGuiCommand();
 
 //============================================================
 // Setup
@@ -235,7 +272,6 @@ void setup() {
     updateMotionDisplay(Motion_text);
     updateSpeedDisplay(Speed_text);
     updateSwitchDisplay();
-     
 }
 
 //============================================================
@@ -265,7 +301,6 @@ void loop() {
         drawSwitchHeaderOnly();
     }
 }
-
 
 //============================================================
 // Data Processing
@@ -307,10 +342,9 @@ void parseIncomingData() {
         SerialUSB.println(RFID_data);
 
     } else if (RFID_sensor == 0 && Serial2.available()) {
-    // Discard data when RFID sensor is off
-    Serial2.read();
+        // Discard data when RFID sensor is off
+        Serial2.read();
     }
-
 
     if ((new_RFID_data) && (RFID_sensor == 1)) {
         processRfidData();
@@ -408,7 +442,6 @@ void processGuiData() {
     updateSwitchDisplay();
 }
 
-
 //============================================================
 // Sound Effects Processing
 //============================================================
@@ -465,7 +498,6 @@ void processSoundEffects() {
     }
 }
 
-
 void processRfidData() {
     struct RfidAction {
         int code;
@@ -504,26 +536,7 @@ void processRfidData() {
         {RFID_SPEED_100,"Speed 100%","<t 1 03 100 1>", true, SPEED_100}
     };
 
-    auto processSound = [](const RfidAction* table, size_t size) {
-        for (size_t i = 0; i < size; i++) {
-            if (RFID_data == table[i].code) {
-                RFID_text = table[i].text;
-                sendDataDccEX(table[i].cmdOn);
-                sendDataDccEX(table[i].cmdOn, SOUND_DELAY);
-                return true;
-            }
-        }
-        return false;
-    };
-
-    for (const auto& station : STATIONS) {
-        if (RFID_data == station.code) {
-            RFID_text = station.text;
-            sendDataGui(station.code);
-            break;
-        }
-    }
-
+    // Process speeds
     for (const auto& s : SPEEDS) {
         if (RFID_data == s.code) {
             RFID_text = s.text;
@@ -533,6 +546,16 @@ void processRfidData() {
         }
     }
 
+    // Process stations
+    for (const auto& station : STATIONS) {
+        if (RFID_data == station.code) {
+            RFID_text = station.text;
+            sendDataGui(station.code);
+            break;
+        }
+    }
+
+    // Process parking
     if (park_switch == 1 && train_direction == 1) {
         if (RFID_data == RFID_PARK_1) {
             RFID_text = "Speed 50%";
@@ -554,21 +577,100 @@ void processRfidData() {
         }
     }
 
+    // Process sounds based on train selection
+    bool soundProcessed = false;
     if (Train_selection == 0) {
-        processSound(AM_SOUNDS, sizeof(AM_SOUNDS) / sizeof(RfidAction));
+        for (const auto& sound : AM_SOUNDS) {
+            if (RFID_data == sound.code) {
+                RFID_text = sound.text;
+                sendDataDccEX(sound.cmdOn);
+                sendDataDccEX(sound.cmdOn, SOUND_DELAY);
+                soundProcessed = true;
+                break;
+            }
+        }
     } else if (Train_selection == 1) {
-        processSound(K3_SOUNDS, sizeof(K3_SOUNDS) / sizeof(RfidAction));
+        for (const auto& sound : K3_SOUNDS) {
+            if (RFID_data == sound.code) {
+                RFID_text = sound.text;
+                sendDataDccEX(sound.cmdOn);
+                sendDataDccEX(sound.cmdOn, SOUND_DELAY);
+                soundProcessed = true;
+                break;
+            }
+        }
     }
 
     Speed_text = "Speed = " + String(train_speed * 10) + "%";
     updateSpeedDisplay(Speed_text);
 }
 
-
-
 //============================================================
 // Display Update Functions
 //============================================================
+
+// Struct to store parameters for timer callbacks
+struct GuiDisplayParams {
+    int width;
+    int buttonX;
+    int originalY;
+    int buttonWidth;
+    int buttonHeight;
+    int cornerRadius;
+    uint16_t buttonColor;
+    String header;
+    int textSizeHeader;
+    int headerX;
+    int headerY;
+};
+
+// Global structs for storing callback parameters
+GuiDisplayParams guiParams;
+GuiDisplayParams rfidParams;
+
+// Timer callback functions
+void clearGuiDisplayCallback() {
+    // Redraw the button
+    tft.fillRoundRect(guiParams.buttonX, guiParams.originalY, guiParams.buttonWidth, guiParams.buttonHeight, 
+                     guiParams.cornerRadius, guiParams.buttonColor);
+    tft.drawRoundRect(guiParams.buttonX, guiParams.originalY, guiParams.buttonWidth, guiParams.buttonHeight, 
+                     guiParams.cornerRadius, GC9A01A_WHITE);
+    
+    // Redraw only the header text
+    tft.setTextSize(guiParams.textSizeHeader);
+    tft.setTextColor(GC9A01A_WHITE);
+    tft.setCursor(guiParams.headerX, guiParams.headerY);
+    tft.print(guiParams.header);
+}
+
+void clearRfidDisplayCallback() {
+    // Redraw the button
+    tft.fillRoundRect(rfidParams.buttonX, rfidParams.originalY, rfidParams.buttonWidth, rfidParams.buttonHeight, 
+                     rfidParams.cornerRadius, rfidParams.buttonColor);
+    tft.drawRoundRect(rfidParams.buttonX, rfidParams.originalY, rfidParams.buttonWidth, rfidParams.buttonHeight, 
+                     rfidParams.cornerRadius, GC9A01A_WHITE);
+    
+    // Redraw only the header text
+    tft.setTextSize(rfidParams.textSizeHeader);
+    tft.setTextColor(GC9A01A_WHITE);
+    tft.setCursor(rfidParams.headerX, rfidParams.headerY);
+    tft.print(rfidParams.header);
+}
+
+// Global variables for delayed command execution
+char dccExCommandBuffer[64];
+
+// Callback function for delayed DCC-EX command
+void sendDelayedDccExCommand() {
+    Serial3.print(dccExCommandBuffer);
+}
+
+// Callback function for delayed GUI command
+
+void sendDelayedGuiCommand() {
+    Serial4.write(delayedGuiData);
+}
+
 void updateGuiDisplay(String text) {
     int width = tft.width();
     int textSizeHeader = 3;
@@ -628,23 +730,26 @@ void updateGuiDisplay(String text) {
     tft.setCursor(commandX, commandY);
     tft.print(text);
     
-    // Store original Y position for the timer lambda
+    // Store original Y position for the timer callback
     int originalY = topButtonY;
     
+    // Store parameters for the timer callback
+    guiParams.width = width;
+    guiParams.buttonX = buttonX;
+    guiParams.originalY = originalY;
+    guiParams.buttonWidth = buttonWidth;
+    guiParams.buttonHeight = buttonHeight;
+    guiParams.cornerRadius = cornerRadius;
+    guiParams.buttonColor = darkerBlue;
+    guiParams.header = header;
+    guiParams.textSizeHeader = textSizeHeader;
+    guiParams.headerX = headerX;
+    guiParams.headerY = headerY;
+    
     // Set timeout to clear the command text but keep the button and header
-    timer.setTimeout(1500, [width, buttonX, originalY, buttonWidth, buttonHeight, cornerRadius, darkerBlue, header, textSizeHeader, headerX, headerY]() {
-        // Redraw the button
-        tft.fillRoundRect(buttonX, originalY, buttonWidth, buttonHeight, cornerRadius, darkerBlue);
-        tft.drawRoundRect(buttonX, originalY, buttonWidth, buttonHeight, cornerRadius, GC9A01A_WHITE);
-        
-        // Redraw only the header text
-        tft.setTextSize(textSizeHeader);
-        tft.setTextColor(GC9A01A_WHITE);
-        tft.setCursor(headerX, headerY);
-        tft.print(header);
-    });
+    timer.setTimeout(1500, clearGuiDisplayCallback);
 
-     clearGuiDisplayPending = true;
+    clearGuiDisplayPending = true;
     guiDisplayClearTime = millis() + 1500;
 }
 
@@ -710,21 +815,24 @@ void updateRfidDisplay(String text) {
     tft.setCursor(commandX, commandY);
     tft.print(text);
     
-    // Store original Y position for the timer lambda
+    // Store original Y position for the timer callback
     int originalY = bottomButtonY;
     
+    // Store parameters for the timer callback
+    rfidParams.width = width;
+    rfidParams.buttonX = buttonX;
+    rfidParams.originalY = originalY;
+    rfidParams.buttonWidth = buttonWidth;
+    rfidParams.buttonHeight = buttonHeight;
+    rfidParams.cornerRadius = cornerRadius;
+    rfidParams.buttonColor = redBackgroundColor;
+    rfidParams.header = header;
+    rfidParams.textSizeHeader = textSizeHeader;
+    rfidParams.headerX = headerX;
+    rfidParams.headerY = headerY;
+    
     // Set timeout to clear the command text but keep the button and header
-    timer.setTimeout(1500, [width, buttonX, originalY, buttonWidth, buttonHeight, cornerRadius, redBackgroundColor, header, textSizeHeader, headerX, headerY]() {
-        // Redraw the button
-        tft.fillRoundRect(buttonX, originalY, buttonWidth, buttonHeight, cornerRadius, redBackgroundColor);
-        tft.drawRoundRect(buttonX, originalY, buttonWidth, buttonHeight, cornerRadius, GC9A01A_WHITE);
-        
-        // Redraw only the header text
-        tft.setTextSize(textSizeHeader);
-        tft.setTextColor(GC9A01A_WHITE);
-        tft.setCursor(headerX, headerY);
-        tft.print(header);
-    });
+    timer.setTimeout(1500, clearRfidDisplayCallback);
 
     clearRfidDisplayPending = true;
     rfidDisplayClearTime = millis() + 1500;
@@ -973,7 +1081,6 @@ void updateSwitchDisplay() {
 
     clearSwitchDisplayPending = true;
     switchDisplayClearTime = millis() + 1500;
-
 }
 
 void drawGuiHeaderOnly() {
@@ -1003,8 +1110,6 @@ void drawSwitchHeaderOnly() {
     clearSwitchDisplayPending = false;
 }
 
-
-
 //============================================================
 // Communication Functions
 //============================================================
@@ -1012,24 +1117,23 @@ void sendDataDccEX(const char* data, unsigned long delay) {
     if (delay == 0) {
         Serial3.print(data);
     } else {
-        static char buffer[64];  // Adjust size as needed based on your longest command
-        strncpy(buffer, data, sizeof(buffer) - 1);
-        buffer[sizeof(buffer) - 1] = '\0';  // Ensure null termination
-
-        timer.setTimeout(delay, [=]() {
-            Serial3.print(buffer);
-        });
+        // Copy data to buffer for delayed sending
+        strncpy(dccExCommandBuffer, data, sizeof(dccExCommandBuffer) - 1);
+        dccExCommandBuffer[sizeof(dccExCommandBuffer) - 1] = '\0';  // Ensure null termination
+        
+        // Set timeout for delayed sending
+        timer.setTimeout(delay, sendDelayedDccExCommand);
     }
 }
-
 
 void sendDataGui(int data, unsigned long delay) {
     if (delay == 0) {
         Serial4.write(data);
     } else {
-        // Capture value safely into lambda using a fixed variable
-        timer.setTimeout(delay, [data]() {
-            Serial4.write(data);
-        });
+        // Store data for delayed sending
+        delayedGuiData = data;
+        
+        // Set timeout for delayed sending
+        timer.setTimeout(delay, sendDelayedGuiCommand);
     }
 }
