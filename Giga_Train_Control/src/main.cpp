@@ -1,12 +1,11 @@
-//============================================================
-// Train Control System with Enum Refactor
-// Uses Arduino Giga to interface with DCC-EX, RFID and GUI
-//============================================================
+// Giga_Train_Control - working copy 05/07/2025
 
 //============================================================
 // Train Selection
 //============================================================
-int Train_selection = 1;     // K3 Stainz (K3) = 1, American Mogul (AM) = 0
+int Train_selection = 1;     
+    // K3 Stainz (K3) = 1 
+    // American Mogul (AM) = 0
 
 //============================================================
 // Include libraries
@@ -76,32 +75,32 @@ enum RfidCommands {
 
 // GUI Sound Effect Codes (used in processSoundEffects)
 enum GuiSoundEffects {
-    GUI_BELL                 = 141,
-    GUI_LONG_WHISTLE         = 142,
-    GUI_WHISTLE              = 143,
-    GUI_SHORT_WHISTLE        = 144,
-    GUI_WHEELS_SQUEALING     = 149,
-    GUI_SHOVELING_COAL       = 150,
-    GUI_BLOWER_SOUND         = 151,
-    GUI_COUPLER              = 152,
-    GUI_COAL_DROPPING        = 153,
-    GUI_STEAM_VENTING        = 154,
-    GUI_CONDUCTOR_CALLING    = 157,
-    GUI_GENERATOR            = 158,
-    GUI_AIR_PUMP             = 159,
-    GUI_COAL_UNLOADING       = 160,
-    GUI_WATER_FILLING_TANK   = 161,
+    GUI_AM_BELL                  = 41,
+    GUI_AM_LONG_WHISTLE          = 42,
+    GUI_AM_WHISTLE               = 43,
+    GUI_AM_SHORT_WHISTLE         = 44,
+    GUI_AM_WHEELS_SQUEALING      = 49,
+    GUI_AM_SHOVELING_COAL        = 50,
+    GUI_AM_BLOWER_SOUND          = 51,
+    GUI_AM_COUPLER               = 52,
+    GUI_AM_COAL_DROPPING         = 53,
+    GUI_AM_STEAM_VENTING         = 54,
+    GUI_AM_CONDUCTOR_CALLING     = 57,
+    GUI_AM_GENERATOR             = 58,
+    GUI_AM_AIR_PUMP              = 59,
+    GUI_AM_COAL_UNLOADING        = 60,
+    GUI_AM_WATER_FILLING_TANK    = 61,
 
-    GUI_K3_CONDUCTOR_CALLING     = 167,
-    GUI_K3_CONDUCTOR_WHISTLE     = 168,
-    GUI_K3_COAL_SHOVELING        = 170,
-    GUI_K3_INJECTOR              = 171,
-    GUI_K3_BELL                  = 172,
-    GUI_K3_WHISTLE               = 174,
-    GUI_K3_COUPLER               = 175,
-    GUI_K3_AIR_PUMP              = 176,
-    GUI_K3_BOILER                = 177,
-    GUI_K3_STEAM_VENTING         = 178
+    GUI_K3_CONDUCTOR_CALLING     = 67,
+    GUI_K3_CONDUCTOR_WHISTLE     = 68,
+    GUI_K3_COAL_SHOVELING        = 70,
+    GUI_K3_INJECTOR              = 71,
+    GUI_K3_BELL                  = 72,
+    GUI_K3_WHISTLE               = 74,
+    GUI_K3_COUPLER               = 75,
+    GUI_K3_AIR_PUMP              = 76,
+    GUI_K3_BOILER                = 77,
+    GUI_K3_STEAM_VENTING         = 78
 };
 
 //============================================================
@@ -249,6 +248,10 @@ void setup() {
     tft.begin();
     tft.setRotation(0);  
     tft.fillScreen(GC9A01A_BLACK);
+
+    // Register proper callbacks for timers
+    timer.setTimer(1500, guiDisplayTimerCallback, 1);
+    timer.setTimer(1500, rfidDisplayTimerCallback, 1);
 
     // Initial system setup with delays
     delay(1000);
@@ -454,21 +457,21 @@ void processSoundEffects() {
     };
 
     static const SoundEffect AM_SOUNDS[] = {
-        {GUI_BELL,              "<F 3 7 1>",  "<F 3 7 0>",  "Bell"},
-        {GUI_LONG_WHISTLE,      "<F 3 2 1>",  "<F 3 2 0>",  "Long whistles"},
-        {GUI_WHISTLE,           "<F 3 9 1>",  "<F 3 9 0>",  "Whistle"},
-        {GUI_SHORT_WHISTLE,     "<F 3 4 1>",  "<F 3 4 0>",  "Short whistle"},
-        {GUI_WHEELS_SQUEALING,  "<F 3 9 1>",  "<F 3 9 0>",  "Wheels squealing"},
-        {GUI_SHOVELING_COAL,    "<F 3 10 1>", "<F 3 10 2>", "Shoveling coal"},
-        {GUI_BLOWER_SOUND,      "<F 3 11 1>", "<F 3 11 0>", "Blower sound"},
-        {GUI_COUPLER,           "<F 3 12 1>", "<F 3 12 0>", "Coupler/Uncoupler"},
-        {GUI_COAL_DROPPING,     "<F 3 13 1>", "<F 3 13 0>", "Coal dropping"},
-        {GUI_STEAM_VENTING,     "<F 3 13 1>", "<F 3 13 0>", "Steam venting"},
-        {GUI_CONDUCTOR_CALLING, "<F 3 17 1>", "<F 3 17 0>", "Conductor calling"},
-        {GUI_GENERATOR,         "<F 3 18 1>", "<F 3 18 2>", "Generator sound"},
-        {GUI_AIR_PUMP,          "<F 3 19 1>", "<F 3 19 0>", "Air pump"},
-        {GUI_COAL_UNLOADING,    "<F 3 20 1>", "<F 3 20 0>", "Coal unloading"},
-        {GUI_WATER_FILLING_TANK,"<F 3 21 1>", "<F 3 21 0>", "Water filling tank"}
+        {GUI_AM_BELL,              "<F 3 7 1>",  "<F 3 7 0>",  "Bell"},
+        {GUI_AM_LONG_WHISTLE,      "<F 3 2 1>",  "<F 3 2 0>",  "Long whistles"},
+        {GUI_AM_WHISTLE,           "<F 3 9 1>",  "<F 3 9 0>",  "Whistle"},
+        {GUI_AM_SHORT_WHISTLE,     "<F 3 4 1>",  "<F 3 4 0>",  "Short whistle"},
+        {GUI_AM_WHEELS_SQUEALING,  "<F 3 9 1>",  "<F 3 9 0>",  "Wheels squealing"},
+        {GUI_AM_SHOVELING_COAL,    "<F 3 10 1>", "<F 3 10 2>", "Shoveling coal"},
+        {GUI_AM_BLOWER_SOUND,      "<F 3 11 1>", "<F 3 11 0>", "Blower sound"},
+        {GUI_AM_COUPLER,           "<F 3 12 1>", "<F 3 12 0>", "Coupler/Uncoupler"},
+        {GUI_AM_COAL_DROPPING,     "<F 3 13 1>", "<F 3 13 0>", "Coal dropping"},
+        {GUI_AM_STEAM_VENTING,     "<F 3 13 1>", "<F 3 13 0>", "Steam venting"},
+        {GUI_AM_CONDUCTOR_CALLING, "<F 3 17 1>", "<F 3 17 0>", "Conductor calling"},
+        {GUI_AM_GENERATOR,         "<F 3 18 1>", "<F 3 18 2>", "Generator sound"},
+        {GUI_AM_AIR_PUMP,          "<F 3 19 1>", "<F 3 19 0>", "Air pump"},
+        {GUI_AM_COAL_UNLOADING,    "<F 3 20 1>", "<F 3 20 0>", "Coal unloading"},
+        {GUI_AM_WATER_FILLING_TANK,"<F 3 21 1>", "<F 3 21 0>", "Water filling tank"}
     };
 
     static const SoundEffect K3_SOUNDS[] = {
@@ -490,8 +493,20 @@ void processSoundEffects() {
 
     for (size_t i = 0; i < tableSize; i++) {
         if (GUI_data == table[i].code) {
-            sendDataDccEX(table[i].cmdOn);
-            sendDataDccEX(table[i].cmdOff, SOUND_DELAY);
+            // Debug output
+            SerialUSB.print("Processing sound: ");
+            SerialUSB.println(table[i].label);
+            
+            // Explicitly send commands with direct timing
+            Serial3.println(table[i].cmdOn);
+            
+            // Store the command for delayed execution
+            strncpy(dccCommandBuffer, table[i].cmdOff, sizeof(dccCommandBuffer) - 1);
+            dccCommandBuffer[sizeof(dccCommandBuffer) - 1] = '\0';  // Ensure null termination
+            
+            // Create a timer for the sound delay
+            timer.setTimeout(SOUND_DELAY, delayedDccCommand);
+            
             GUI_text = table[i].label;
             break;
         }
@@ -657,8 +672,24 @@ void clearRfidDisplayCallback() {
     tft.print(rfidParams.header);
 }
 
+// Update timer callbacks to directly use the clear functions
+void guiDisplayTimerCallback() {
+    drawGuiHeaderOnly();
+}
+
+void rfidDisplayTimerCallback() {
+    drawRfidHeaderOnly();
+}
+
 // Global variables for delayed command execution
 char dccExCommandBuffer[64];
+
+// Add the callback function that was previously a lambda
+void delayedDccCommand() {
+    Serial3.println(dccCommandBuffer);
+    SerialUSB.print("Delayed command sent: ");
+    SerialUSB.println(dccCommandBuffer);
+}
 
 // Callback function for delayed DCC-EX command
 void sendDelayedDccExCommand() {
@@ -751,6 +782,12 @@ void updateGuiDisplay(String text) {
 
     clearGuiDisplayPending = true;
     guiDisplayClearTime = millis() + 1500;
+
+    // Replace the lambda with a properly defined function
+    if (!text.isEmpty()) {
+        clearGuiDisplayPending = true;
+        guiDisplayClearTime = millis() + 1500;
+    }
 }
 
 void updateRfidDisplay(String text) {
@@ -880,8 +917,12 @@ void updateMotionDisplay(String text) {
     tft.setCursor(textX, textY);
     tft.print(text);
 
-    clearMotionDisplayPending = true;
-    motionDisplayClearTime = millis() + 1500;
+    if (train_speed == 0) {
+        clearMotionDisplayPending = true;
+        motionDisplayClearTime = millis() + 1500;
+    } else {
+        clearMotionDisplayPending = false;  // Don't clear motion display if train is moving
+    }
 }
 
 void updateSpeedDisplay(String text) {
@@ -929,8 +970,12 @@ void updateSpeedDisplay(String text) {
     tft.setCursor(textX, textY);
     tft.print(text);
 
-    clearSpeedDisplayPending = true;
-    speedDisplayClearTime = millis() + 1500;
+    if (train_speed == 0) {
+        clearSpeedDisplayPending = true;
+        speedDisplayClearTime = millis() + 1500;
+    } else {
+        clearSpeedDisplayPending = false;  // Don't clear motion display if train is moving
+    }
 }
 
 void updateSwitchDisplay() {

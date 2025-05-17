@@ -490,20 +490,8 @@ void processSoundEffects() {
 
     for (size_t i = 0; i < tableSize; i++) {
         if (GUI_data == table[i].code) {
-            // Debug output
-            SerialUSB.print("Processing sound: ");
-            SerialUSB.println(table[i].label);
-            
-            // Explicitly send commands with direct timing
-            Serial3.println(table[i].cmdOn);
-            
-            // Store the command for delayed execution
-            strncpy(dccCommandBuffer, table[i].cmdOff, sizeof(dccCommandBuffer) - 1);
-            dccCommandBuffer[sizeof(dccCommandBuffer) - 1] = '\0';  // Ensure null termination
-            
-            // Create a timer for the sound delay
-            timer.setTimeout(SOUND_DELAY, delayedDccCommand);
-            
+            sendDataDccEX(table[i].cmdOn);
+            sendDataDccEX(table[i].cmdOff, SOUND_DELAY);
             GUI_text = table[i].label;
             break;
         }
@@ -671,13 +659,6 @@ void clearRfidDisplayCallback() {
 
 // Global variables for delayed command execution
 char dccExCommandBuffer[64];
-
-// Add the callback function that was previously a lambda
-void delayedDccCommand() {
-    Serial3.println(dccCommandBuffer);
-    SerialUSB.print("Delayed command sent: ");
-    SerialUSB.println(dccCommandBuffer);
-}
 
 // Callback function for delayed DCC-EX command
 void sendDelayedDccExCommand() {

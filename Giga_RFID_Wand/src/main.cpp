@@ -1,4 +1,3 @@
-// Refactored RFID Sketch with Unified Display Logic and Improvements
 #include <Wire.h>
 #include <SPI.h>
 #include <Adafruit_GFX.h>
@@ -12,44 +11,223 @@
 #define BUTTON_B 14
 #define BUTTON_C 15
 
-#define D_DELAY 750
+#define D_DELAY 750  // Reduced for better button responsiveness
 
-Adafruit_SH1107 display = Adafruit_SH1107(64, 128, &Wire);
+Adafruit_SH1107 display(64, 128, &Wire);
 Adafruit_PN532 nfc(PN532_SS, &SPI);
 
-// Enums for clarity
 enum Mode { WRITE_MODE = 0, READ_MODE = 1 };
 Mode mode = READ_MODE;
 
 #define NUM_TRAIN_COMMANDS 19
 #define TRAIN_COMMAND_STR_LENGTH 32
-int trainCommandIndex = 0;
+int trainCommandIndex = 1;
 
 SimpleTimer timer;
-bool lastAState = HIGH, lastBState = HIGH, lastCState = HIGH;
-bool firstCommandSelected = false;
 
-uint8_t keya[6] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
-const char trainCommandTextArray[NUM_TRAIN_COMMANDS][TRAIN_COMMAND_STR_LENGTH] = {
-  "", "Long whistles", "Whistle", "Short whistle", "Bell", "Speed 20%",
-  "Speed 40%", "Speed 60%", "Speed 80%", "Speed 100%", "Park Trigger 1",
-  "Park Trigger 2", "Park", "Station 1", "Station 2", "Station 3",
-  "Station 4", "Station 5", "Station 6"
+uint8_t keya[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+
+// Modified array structure - two strings per command for easier display
+// First string is top line, second string is bottom line (empty string means single line)
+const char trainCommandTextArray[NUM_TRAIN_COMMANDS][2][TRAIN_COMMAND_STR_LENGTH] = {
+  {"", ""},               // 0 - Empty
+  {"Long", "whistles"},   // 1
+  {"Whistle", ""},        // 2
+  {"Short", "whistle"},   // 3
+  {"Bell", ""},           // 4
+  {"Speed 20%", ""},      // 5
+  {"Speed 40%", ""},      // 6
+  {"Speed 60%", ""},      // 7
+  {"Speed 80%", ""},      // 8
+  {"Speed 100%", ""},     // 9
+  {"Park", "Trigger 1"},  // 10
+  {"Park", "Trigger 2"},  // 11
+  {"Park", ""},           // 12
+  {"Station 1", ""},      // 13
+  {"Station 2", ""},      // 14
+  {"Station 3", ""},      // 15
+  {"Station 4", ""},      // 16
+  {"Station 5", ""},      // 17
+  {"Station 6", ""}       // 18
 };
 
+// This combined array is used for RFID reading/writing to maintain compatibility
+char combinedCommandArray[NUM_TRAIN_COMMANDS][TRAIN_COMMAND_STR_LENGTH];
+
+// Function prototypes - needed for PlatformIO compilation
 void displayCenteredText(const char* text, int delayTime);
 void displayCenteredTextTwoLines(const char* line1, const char* line2, int delayTime);
-void smartDisplay(const char* text);
+void smartDisplay(const char* line1, const char* line2);
 void commandDisplay(int command);
-void tFIIncrementer(int inc);
 int tFIMatch(byte tagText[]);
+void RFID(uint8_t* uid, uint8_t uidLength);
 void buttons();
-void RFID();
+
+// Display text centered on display
+void displayCenteredText(const char* text, int delayTime) {
+  display.clearDisplay();
+  display.setTextSize(2);
+  int16_t x1, y1;
+  uint16_t w, h;
+  display.getTextBounds(text, 0, 0, &x1, &y1, &w, &h);
+  display.setCursor((display.width() - w) / 2, (display.height() - h) / 2);
+  display.print(text);
+  display.display();
+  delay(delayTime);
+  display.clearDisplay();  // Clears after delay
+  display.display();
+}
+
+// Display two lines of text centered on display
+void displayCenteredTextTwoLines(const char* line1, const char* line2, int delayTime) {
+  display.clearDisplay();
+  display.setTextSize(2);
+
+  int16_t x1, y1, x2, y2;
+  uint16_t w1, h1, w2, h2;
+
+  // Measure both lines independently
+  display.getTextBounds(line1, 0, 0, &x1, &y1, &w1, &h1);
+  
+  // If there's no second line text, center the first line vertically
+  if (line2[0] == '\0') {
+    display.setCursor((display.width() - w1) / 2, (display.height() - h1) / 2);
+    display.print(line1);
+  } else {
+    // Calculate for two lines
+    display.getTextBounds(line2, 0, 0, &x2, &y2, &w2, &h2);
+    
+    // Total height calculation for vertical centering
+    int totalHeight = h1 + h2 + 2;  // 2 pixels gap
+    int startY = (display.height() - totalHeight) / 2;
+
+    // Set cursor and print first line centered
+    display.setCursor((display.width() - w1) / 2, startY);
+    display.print(line1);
+
+    // Set cursor and print second line centered
+    display.setCursor((display.width() - w2) / 2, startY + h1 + 2);
+    display.print(line2);
+  }
+
+  display.display();
+  
+  // Instead of blocking with delay(), we'll use a non-blocking method
+  // The original function used a delay and then cleared the display
+  // We'll keep this behavior but make it non-blocking in a real application
+  delay(delayTime); // Still using delay for simplicity in this example
+  
+  // Clear display after delay
+  display.clearDisplay();
+  display.display();
+}
+
+// Simplified wrapper for displayCenteredTextTwoLines
+void smartDisplay(const char* line1, const char* line2) {
+  displayCenteredTextTwoLines(line1, line2, D_DELAY);
+}
+
+// Display a command from the array
+void commandDisplay(int command) {
+  if (command >= 0 && command < NUM_TRAIN_COMMANDS)
+    displayCenteredTextTwoLines(
+      trainCommandTextArray[command][0],
+      trainCommandTextArray[command][1],
+      D_DELAY
+    );
+  else
+    displayCenteredTextTwoLines("No Match!", "", D_DELAY);
+}
+
+// Match tag text with commands in array
+int tFIMatch(byte tagText[]) {
+  for (int i = 0; i < NUM_TRAIN_COMMANDS; i++) {
+    if (!strcmp((char*)tagText, combinedCommandArray[i])) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+// Write command to RFID tag
+void RFID(uint8_t* uid, uint8_t uidLength) {
+  if (!nfc.mifareclassic_AuthenticateBlock(uid, uidLength, 4, 0, keya)) {
+    smartDisplay("Auth", "failed");
+    return;
+  }
+
+  for (int i = 0; i < 2; i++) {
+    uint8_t blockData[16] = {0};
+    memcpy(blockData, &combinedCommandArray[trainCommandIndex][i * 16], 16);
+    if (!nfc.mifareclassic_WriteDataBlock(4 + i, blockData)) {
+      smartDisplay("Write", "failed");
+      return;
+    }
+  }
+
+  // Display what was written using our two-line format
+  displayCenteredTextTwoLines(
+    trainCommandTextArray[trainCommandIndex][0], 
+    trainCommandTextArray[trainCommandIndex][1], 
+    D_DELAY
+  );
+}
+
+// Handle button presses
+void buttons() {
+  static bool lastAState = HIGH, lastBState = HIGH, lastCState = HIGH;
+  static unsigned long lastButtonTime = 0;
+  bool a = digitalRead(BUTTON_A);
+  bool b = digitalRead(BUTTON_B);
+  bool c = digitalRead(BUTTON_C);
+  unsigned long currentTime = millis();
+  
+  // Only process button presses if enough time has passed since the last press
+  if (currentTime - lastButtonTime > 100) { // 100ms debounce time
+    if (a == LOW && lastAState == HIGH) {
+      lastButtonTime = currentTime;
+      mode = (mode == WRITE_MODE) ? READ_MODE : WRITE_MODE;
+      smartDisplay((mode == WRITE_MODE) ? "Write Mode" : "Read Mode", "");
+    }
+
+    if (mode == WRITE_MODE) {
+      if (c == LOW && lastCState == HIGH) {
+        lastButtonTime = currentTime;
+        trainCommandIndex = (trainCommandIndex + 1) % NUM_TRAIN_COMMANDS;
+        if (trainCommandIndex == 0) trainCommandIndex = 1;
+        commandDisplay(trainCommandIndex);
+      }
+      if (b == LOW && lastBState == HIGH) {
+        lastButtonTime = currentTime;
+        trainCommandIndex = (trainCommandIndex - 1);
+        if (trainCommandIndex <= 0) trainCommandIndex = NUM_TRAIN_COMMANDS - 1;
+        commandDisplay(trainCommandIndex);
+      }
+    }
+  }
+
+  lastAState = a;
+  lastBState = b;
+  lastCState = c;
+}
 
 void setup() {
   Serial.begin(115200);
   SPI.begin();
   nfc.begin();
+
+  // Combine the two-line arrays into single strings for RFID operations
+  for (int i = 0; i < NUM_TRAIN_COMMANDS; i++) {
+    if (trainCommandTextArray[i][1][0] == '\0') {
+      // Only first line has content
+      strcpy(combinedCommandArray[i], trainCommandTextArray[i][0]);
+    } else {
+      // Both lines have content - combine with space
+      sprintf(combinedCommandArray[i], "%s %s", 
+              trainCommandTextArray[i][0], 
+              trainCommandTextArray[i][1]);
+    }
+  }
 
   if (!nfc.getFirmwareVersion()) {
     Serial.println("Didn't find PN53x board");
@@ -69,18 +247,20 @@ void setup() {
   pinMode(BUTTON_B, INPUT_PULLUP);
   pinMode(BUTTON_C, INPUT_PULLUP);
 
-  smartDisplay("Read Mode");
-  timer.setInterval(30, buttons);
+  smartDisplay("Read Mode", "");
+  timer.setInterval(50, buttons);
 }
 
 void loop() {
+  timer.run();
+
   uint8_t uid[7];
   uint8_t uidLength;
 
-  if (nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLength, 100)) {
+  if (nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLength, 200)) {
     if (mode == READ_MODE) {
       if (!nfc.mifareclassic_AuthenticateBlock(uid, uidLength, 4, 0, keya)) {
-        smartDisplay("Auth failed");
+        smartDisplay("Auth", "failed");
         return;
       }
 
@@ -88,7 +268,7 @@ void loop() {
       bool success = true;
       for (int i = 0; i < 2; i++) {
         if (!nfc.mifareclassic_ReadDataBlock(4 + i, &buffer[i * 16])) {
-          smartDisplay("Read failed");
+          smartDisplay("Read", "failed");
           success = false;
           break;
         }
@@ -96,150 +276,10 @@ void loop() {
       if (success) {
         int commandIndex = tFIMatch(buffer);
         if (commandIndex >= 0) commandDisplay(commandIndex);
+        else smartDisplay("No Match!", "");
       }
     } else if (mode == WRITE_MODE) {
-      RFID();
+      RFID(uid, uidLength);
     }
   }
-
-  timer.run();
-}
-
-void RFID() {
-  uint8_t uid[7];
-  uint8_t uidLength;
-  if (!nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLength, 100)) return;
-  if (!nfc.mifareclassic_AuthenticateBlock(uid, uidLength, 4, 0, keya)) {
-    smartDisplay("Auth failed");
-    return;
-  }
-
-  for (int i = 0; i < 2; i++) {
-    uint8_t blockData[16];
-    memset(blockData, 0, 16);
-    memcpy(blockData, &trainCommandTextArray[trainCommandIndex][i * 16], 16);
-    if (!nfc.mifareclassic_WriteDataBlock(4 + i, blockData)) {
-      smartDisplay("Write failed");
-      return;
-    }
-  }
-
-  smartDisplay("Wrote:");
-  smartDisplay(trainCommandTextArray[trainCommandIndex]);
-}
-
-void displayCenteredText(const char* text, int delayTime) {
-  display.clearDisplay();
-  display.setTextSize(2);
-  int16_t x1, y1;
-  uint16_t w, h;
-  display.getTextBounds(text, 0, 0, &x1, &y1, &w, &h);
-  int x = (display.width() - w) / 2;
-  int y = (display.height() - h) / 2;
-  display.setCursor(x, y);
-  display.print(text);
-  display.display();
-  delay(delayTime);
-}
-
-void displayCenteredTextTwoLines(const char* line1, const char* line2, int delayTime) {
-  display.clearDisplay();
-  display.setTextSize(2);
-  int16_t x1, y1, x2, y2;
-  uint16_t w1, h1, w2, h2;
-  display.getTextBounds(line1, 0, 0, &x1, &y1, &w1, &h1);
-  display.getTextBounds(line2, 0, 0, &x2, &y2, &w2, &h2);
-  const int lineSpacing = 2;
-  int totalHeight = h1 + h2 + lineSpacing;
-  int y1pos = (display.height() - totalHeight) / 2;
-  int y2pos = y1pos + h1 + lineSpacing;
-  display.setCursor((display.width() - w1) / 2, y1pos);
-  display.print(line1);
-  display.setCursor((display.width() - w2) / 2, y2pos);
-  display.print(line2);
-  display.display();
-  delay(delayTime);
-}
-
-void smartDisplay(const char* text) {
-  int16_t x1, y1;
-  uint16_t w, h;
-  display.setTextSize(2);
-  display.getTextBounds(text, 0, 0, &x1, &y1, &w, &h);
-  if (w <= display.width()) {
-    displayCenteredText(text, D_DELAY);
-  } else {
-    char buffer[TRAIN_COMMAND_STR_LENGTH];
-    strncpy(buffer, text, TRAIN_COMMAND_STR_LENGTH);
-    char* spacePos = strchr(buffer, ' ');
-    if (spacePos != NULL) {
-      *spacePos = '\0';
-      displayCenteredTextTwoLines(buffer, spacePos + 1, D_DELAY);
-    } else {
-      displayCenteredText(text, D_DELAY);
-    }
-  }
-}
-
-void commandDisplay(int command) {
-  if (command >= 0 && command < NUM_TRAIN_COMMANDS) {
-    smartDisplay(trainCommandTextArray[command]);
-  } else {
-    smartDisplay("!No Match!");
-  }
-}
-
-void tFIIncrementer(int inc) {
-  trainCommandIndex += inc;
-  if (trainCommandIndex < 1) trainCommandIndex = NUM_TRAIN_COMMANDS - 1;
-  if (trainCommandIndex >= NUM_TRAIN_COMMANDS) trainCommandIndex = 1;
-}
-
-int tFIMatch(byte tagText[]) {
-  for (int i = 0; i < NUM_TRAIN_COMMANDS; i++) {
-    if (!strcmp((char*)tagText, trainCommandTextArray[i])) {
-      return i;
-    }
-  }
-  return -1;
-}
-
-void buttons() {
-  bool a = digitalRead(BUTTON_A);
-  bool b = digitalRead(BUTTON_B);
-  bool c = digitalRead(BUTTON_C);
-  static unsigned long lastDebounceTime = 0;
-  const unsigned long debounceDelay = 50;
-
-  if ((millis() - lastDebounceTime) > debounceDelay) {
-    if (a == LOW && lastAState == HIGH) {
-      mode = (mode == WRITE_MODE) ? READ_MODE : WRITE_MODE;
-      smartDisplay((mode == WRITE_MODE) ? "Write Mode" : "Read Mode");
-      firstCommandSelected = false;
-    }
-    if (mode == WRITE_MODE) {
-      if (c == LOW && lastCState == HIGH) {
-        if (!firstCommandSelected) {
-          trainCommandIndex = 1;
-          firstCommandSelected = true;
-        } else {
-          tFIIncrementer(1);
-        }
-        commandDisplay(trainCommandIndex);
-      }
-      if (b == LOW && lastBState == HIGH) {
-        if (!firstCommandSelected) {
-          trainCommandIndex = NUM_TRAIN_COMMANDS - 1;
-          firstCommandSelected = true;
-        } else {
-          tFIIncrementer(-1);
-        }
-        commandDisplay(trainCommandIndex);
-      }
-    }
-    lastDebounceTime = millis();
-  }
-  lastAState = a;
-  lastBState = b;
-  lastCState = c;
 }

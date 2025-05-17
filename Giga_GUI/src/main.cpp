@@ -49,11 +49,8 @@ void parseIncomingCommands();
 BlynkTimer timer;  //Using blynk timer but could also use SimpleTimer
 char auth[] = BLYNK_AUTH_TOKEN;
 
-//char ssid[] = "BR Guest";
-//char pass[] = "Pamma355!";
-
-char ssid[] = "NETGEAR51";
-char pass[] = "excitedbox382";
+char ssid[] = "BR Guest";
+char pass[] = "Pamma355!";
 
 // This function is called every time the device is connected to the Blynk.Cloud
 BLYNK_CONNECTED() {
